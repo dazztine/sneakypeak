@@ -1,6 +1,6 @@
 # SneakyPeak — WooCommerce Sneak Peek & Campaign Reveal
 
-[![Version](https://img.shields.io/badge/version-1.2.3-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
+[![Version](https://img.shields.io/badge/version-1.2.4-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
 [![WordPress](https://img.shields.io/badge/wordpress-6.2%2B-blue.svg)](https://wordpress.org)
 [![WooCommerce](https://img.shields.io/badge/woocommerce-8.0%2B-purple.svg)](https://woocommerce.com)
 [![PHP](https://img.shields.io/badge/php-7.4%2B-8892BF.svg)](https://php.net)

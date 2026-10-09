@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,13 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.2.4 =
+* Category Archive Preview Fix: Hooked `suppress_caching_if_active()` early on `init`, `template_redirect`, and `send_headers`, applying `DONOTCACHEPAGE` and strict `Cache-Control: no-store` headers so preview requests are never served stale cached archive pages.
+* Redirect Target Preservation: Admin-bar preset, exit, and custom date actions pass explicit sanitized `redirect_to` URLs on frontend requests, ensuring category archives preserve pagination, ordering, and filter query parameters (`?orderby=...`, `/page/2/`).
+* Category & Archive Contextualization: Admin bar automatically infers the winning campaign context from queried product category archives and single product pages, eliminating fallback mismatches on multi-campaign stores.
+* Cache Invalidation & Partitioning: Added preview cache context keys to `woocommerce_variation_prices_hash` to prevent WooCommerce from serving cached transient prices across preview phase transitions. Automated Resolver target resolution cache clearing on preview start and exit.
+* Robust Block Theme Card Targeting: Enhanced JS badge targeting to recognize hidden card markers on Live phase products, ensuring cards are accurately identified across block-based grids and custom archive templates.
 
 = 1.2.3 =
 * Font Upload Fix: Removed get_current_screen() reliance during upload requests; uploads now validate manage_options capability and campaign context directly. Added wp_check_filetype_and_ext filter ensuring .woff, .woff2, and .ttf fonts pass WordPress core file validation while remaining securely blocked for non-admin users.

@@ -149,9 +149,10 @@ class Controller {
     /**
      * Add sneakypeak-promo and campaign-specific classes to product cards
      */
-    public static function filter_post_class(array $classes, $class, $post_id): array {
-        if (get_post_type($post_id) === 'product') {
-            $product = wc_get_product($post_id);
+    public static function filter_post_class(array $classes, $class = '', $post_id = null): array {
+        $pid = $post_id ? (int) $post_id : get_the_ID();
+        if ($pid > 0 && get_post_type($pid) === 'product') {
+            $product = wc_get_product($pid);
             if ($product) {
                 $res = Resolver::resolve($product);
                 if ($res['campaign'] !== null) {
@@ -164,7 +165,13 @@ class Controller {
         return $classes;
     }
 
-    public static function filter_woocommerce_post_class(array $classes, $product): array {
+    public static function filter_woocommerce_post_class(array $classes, $product = null): array {
+        if (is_numeric($product)) {
+            $product = wc_get_product($product);
+        } elseif (!$product) {
+            $pid = get_the_ID();
+            $product = $pid ? wc_get_product($pid) : null;
+        }
         if ($product && is_a($product, 'WC_Product')) {
             $res = Resolver::resolve($product);
             if ($res['campaign'] !== null) {
@@ -302,7 +309,16 @@ class Controller {
             return $price_html;
         }
 
-        // If campaign is in Live phase or Ended, let standard WooCommerce / live pricing render
+        // In Live phase, append hidden card marker for rock-solid JS card targeting across block themes
+        if ($res['phase'] === Campaign::PHASE_LIVE) {
+            $marker = sprintf(
+                '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
+                esc_attr($res['campaign']->get_id())
+            );
+            return $price_html . $marker;
+        }
+
+        // If campaign is in any phase other than Teaser (e.g. Scheduled or Ended), let standard pricing render
         if ($res['phase'] !== Campaign::PHASE_TEASER) {
             return $price_html;
         }
@@ -398,6 +414,7 @@ class Controller {
         if ($res['campaign'] !== null) {
             $hash[] = 'sneakypeak_guard_phase_' . $res['phase'];
         }
+        $hash[] = 'sneakypeak_ctx_' . Resolver::get_preview_cache_context();
         return $hash;
     }
 

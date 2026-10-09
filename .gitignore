@@ -1,6 +1,7 @@
 # Archives and bundles
 *.zip
 *.tar.gz
+dist/
 
 # Operating System files
 .DS_Store

@@ -48,8 +48,8 @@
     var cardSelector = 'li.product, .product, .wc-block-grid__product, .wp-block-post, .type-product, article';
     var excludedSelector = '.widget_shopping_cart, .woocommerce-mini-cart, .cart_item, .woocommerce-cart-form, .woocommerce-checkout, form.checkout, .checkout, .summary.entry-summary';
 
-    // 1. Process cards marked with .sneakypeak-promo or containing a teaser block
-    var anchors = document.querySelectorAll('.sneakypeak-promo, .sneakypeak-teaser-wrap');
+    // 1. Process cards marked with .sneakypeak-promo, .sneakypeak-teaser-wrap, or .sneakypeak-card-marker
+    var anchors = document.querySelectorAll('.sneakypeak-promo, .sneakypeak-teaser-wrap, .sneakypeak-card-marker');
 
     anchors.forEach(function (el) {
       var card = el.closest(cardSelector);
@@ -73,7 +73,7 @@
 
       // Extract campaign ID from class list (e.g. sneakypeak-campaign-123) or data-campaign-id
       var campaignId = 0;
-      var teaser = card.querySelector('.sneakypeak-teaser-wrap');
+      var teaser = card.querySelector('.sneakypeak-teaser-wrap, .sneakypeak-card-marker');
       if (teaser && teaser.getAttribute('data-campaign-id')) {
         campaignId = parseInt(teaser.getAttribute('data-campaign-id'), 10);
       } else {

@@ -23,6 +23,11 @@ class Preview {
     private static bool $checked_session = false;
 
     public static function init(): void {
+        // Enforce cache suppression early on init, template_redirect, and send_headers
+        add_action('init', Safe::action(array(__CLASS__, 'suppress_caching_if_active')), 1);
+        add_action('template_redirect', Safe::action(array(__CLASS__, 'suppress_caching_if_active')), 1);
+        add_action('send_headers', Safe::action(array(__CLASS__, 'suppress_caching_if_active')), 1);
+
         // Handle preview admin bar actions and custom date submissions
         add_action('init', Safe::action(array(__CLASS__, 'handle_preview_action')));
 
@@ -94,6 +99,12 @@ class Preview {
 
         if (function_exists('nocache_headers')) {
             nocache_headers();
+        }
+
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private');
+            header('Pragma: no-cache');
+            header('Expires: Wed, 11 Jan 1984 05:00:00 GMT');
         }
     }
 
@@ -194,6 +205,7 @@ class Preview {
         $_COOKIE[self::COOKIE_NAME] = $cookie_value;
         self::$checked_session = false;
         self::get_current_session();
+        \SneakyPeak\Campaigns\Resolver::invalidate_caches();
     }
 
     /**
@@ -213,6 +225,7 @@ class Preview {
         unset($_COOKIE[self::COOKIE_NAME]);
         self::$current_session = null;
         self::$checked_session = true;
+        \SneakyPeak\Campaigns\Resolver::invalidate_caches();
     }
 
     /**
@@ -303,11 +316,14 @@ class Preview {
         if (empty($target)) {
             $referer = wp_get_referer();
             if ($referer) {
-                $target = remove_query_arg(array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to'), $referer);
+                $target = remove_query_arg(array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'), $referer);
             } else {
                 $target = home_url('/');
             }
         }
+
+        // Clean any residual preview action parameters from the final target URL
+        $target = remove_query_arg(array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'preview_datetime'), $target);
 
         wp_safe_redirect($target);
         exit;
@@ -327,16 +343,27 @@ class Preview {
         if ($campaign_id > 0) {
             $campaign = Campaign::get($campaign_id);
         }
+
         if (!$campaign) {
             $all = \SneakyPeak\Campaigns\Resolver::get_all_published_campaigns();
-            $campaign = !empty($all) ? $all[0] : null;
+            if (empty($all)) {
+                $error_reason = __('no published campaign found', 'sneakypeak');
+                return 0;
+            }
+            foreach ($all as $c) {
+                $dummy = '';
+                $ts = self::calculate_phase_timestamp_for_campaign($phase, $c, $dummy);
+                if ($ts > 0) {
+                    return $ts;
+                }
+            }
+            return self::calculate_phase_timestamp_for_campaign($phase, $all[0], $error_reason);
         }
 
-        if (!$campaign) {
-            $error_reason = __('no published campaign found', 'sneakypeak');
-            return 0;
-        }
+        return self::calculate_phase_timestamp_for_campaign($phase, $campaign, $error_reason);
+    }
 
+    public static function calculate_phase_timestamp_for_campaign(string $phase, Campaign $campaign, string &$error_reason = ''): int {
         $teaser_ts = $campaign->get_teaser_start_timestamp();
         $reveal_ts = $campaign->get_reveal_start_timestamp();
         $end_ts    = $campaign->get_end_timestamp();
@@ -395,7 +422,7 @@ class Preview {
         // Preset mode: evaluate campaign's own preset timestamp
         $phase = $session['phase'];
         $dummy_reason = '';
-        $ts = self::calculate_phase_timestamp($phase, $campaign->get_id(), $dummy_reason);
+        $ts = self::calculate_phase_timestamp_for_campaign($phase, $campaign, $dummy_reason);
         if ($ts > 0) {
             return $ts;
         }
@@ -450,10 +477,26 @@ class Preview {
             'href'  => '#',
         ));
 
+        // Preserve current URL for redirect on frontend (preserves pagination, query params)
+        $current_url = '';
+        if (!is_admin()) {
+            $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+            if (!empty($request_uri)) {
+                $current_url = remove_query_arg(
+                    array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'),
+                    home_url($request_uri)
+                );
+            }
+        }
+
         // Off (real time)
         if ($is_active) {
+            $exit_args = array('sneakypeak_action' => 'exit_preview');
+            if (!empty($current_url)) {
+                $exit_args['redirect_to'] = $current_url;
+            }
             $exit_url = wp_nonce_url(
-                add_query_arg('sneakypeak_action', 'exit_preview'),
+                add_query_arg($exit_args),
                 'sneakypeak_exit_preview'
             );
             $admin_bar->add_node(array(
@@ -466,13 +509,60 @@ class Preview {
 
         // Determine context campaign ID if available
         $context_campaign_id = 0;
-        if ($session && !empty($session['campaign_id'])) {
-            $context_campaign_id = (int) $session['campaign_id'];
-        } elseif (is_admin()) {
+        if (is_admin()) {
             global $post;
             if ($post && isset($post->post_type) && $post->post_type === 'sneakypeak_campaign') {
                 $context_campaign_id = $post->ID;
             }
+        } elseif (function_exists('is_product_category') && is_product_category()) {
+            $cat_id = (int) get_queried_object_id();
+            if ($cat_id > 0) {
+                $all = \SneakyPeak\Campaigns\Resolver::get_all_published_campaigns();
+                foreach ($all as $c) {
+                    $eff_cats = \SneakyPeak\Campaigns\Resolver::get_effective_category_ids($c);
+                    if (in_array($cat_id, $eff_cats, true)) {
+                        $context_campaign_id = $c->get_id();
+                        break;
+                    }
+                }
+            }
+            if ($context_campaign_id === 0) {
+                global $wp_query;
+                if (!empty($wp_query->posts)) {
+                    $all = \SneakyPeak\Campaigns\Resolver::get_all_published_campaigns();
+                    foreach ($wp_query->posts as $p_post) {
+                        $p_id = is_object($p_post) ? $p_post->ID : (int) $p_post;
+                        $prod_obj = wc_get_product($p_id);
+                        if ($prod_obj) {
+                            foreach ($all as $c) {
+                                if (\SneakyPeak\Campaigns\Resolver::is_product_in_campaign($prod_obj, $c)) {
+                                    $context_campaign_id = $c->get_id();
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } elseif (function_exists('is_product') && is_product()) {
+            $product_id = (int) get_queried_object_id();
+            if ($product_id > 0) {
+                $prod_obj = wc_get_product($product_id);
+                if ($prod_obj) {
+                    $all = \SneakyPeak\Campaigns\Resolver::get_all_published_campaigns();
+                    foreach ($all as $c) {
+                        if (\SneakyPeak\Campaigns\Resolver::is_product_in_campaign($prod_obj, $c)) {
+                            $context_campaign_id = $c->get_id();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fall back to active preview session campaign if not contextualized by current screen
+        if ($context_campaign_id === 0 && $session && !empty($session['campaign_id'])) {
+            $context_campaign_id = (int) $session['campaign_id'];
         }
 
         // Presets
@@ -492,12 +582,16 @@ class Preview {
             $bullet = $is_current ? '● ' : '○ ';
 
             if ($is_available) {
+                $link_args = array(
+                    'sneakypeak_action' => 'set_preview_phase',
+                    'phase'             => $ph_key,
+                    'campaign_id'       => $context_campaign_id,
+                );
+                if (!empty($current_url)) {
+                    $link_args['redirect_to'] = $current_url;
+                }
                 $url = wp_nonce_url(
-                    add_query_arg(array(
-                        'sneakypeak_action' => 'set_preview_phase',
-                        'phase'             => $ph_key,
-                        'campaign_id'       => $context_campaign_id,
-                    )),
+                    add_query_arg($link_args),
                     'sneakypeak_set_preview'
                 );
                 $node_title = $bullet . $ph_title;
@@ -650,6 +744,20 @@ class Preview {
                 <p><?php printf(esc_html__('Enter a date & time in the store timezone (%s) to simulate storefront behavior.', 'sneakypeak'), esc_html($tz_name)); ?></p>
                 <form method="post" action="<?php echo esc_url(add_query_arg('sneakypeak_action', 'set_preview_custom')); ?>">
                     <?php wp_nonce_field('sneakypeak_set_preview_custom'); ?>
+                    <?php
+                    $modal_redirect = '';
+                    if (!is_admin()) {
+                        $req_uri = $_SERVER['REQUEST_URI'] ?? '';
+                        if (!empty($req_uri)) {
+                            $modal_redirect = remove_query_arg(
+                                array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'),
+                                home_url($req_uri)
+                            );
+                        }
+                    }
+                    if (!empty($modal_redirect)): ?>
+                        <input type="hidden" name="redirect_to" value="<?php echo esc_url($modal_redirect); ?>" />
+                    <?php endif; ?>
                     <p>
                         <input type="text" name="preview_datetime" value="<?php echo esc_attr($now_val); ?>" placeholder="YYYY-MM-DD HH:MM" required style="width:100%; font-size:15px; padding:8px;" />
                     </p>
