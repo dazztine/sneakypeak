@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.4
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,10 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.2.5 =
+* Subfolder Install Redirect Fix: Added `current_request_url()` private helper that constructs request URLs with `set_url_scheme('//' . HTTP_HOST . REQUEST_URI)` rather than `home_url(REQUEST_URI)`, preventing duplicate subfolder paths (e.g. `/shop/shop/...`) on subfolder WordPress installations.
+* Sanitized Frontend Action Links: Replaced `home_url($request_uri)` and `home_url($req_uri)` across admin bar and custom date modal redirect fields with `current_request_url()`.
 
 = 1.2.4 =
 * Category Archive Preview Fix: Hooked `suppress_caching_if_active()` early on `init`, `template_redirect`, and `send_headers`, applying `DONOTCACHEPAGE` and strict `Cache-Control: no-store` headers so preview requests are never served stale cached archive pages.

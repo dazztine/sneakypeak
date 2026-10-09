@@ -330,6 +330,29 @@ class Preview {
     }
 
     /**
+     * Build the sanitized full request URL for frontend redirects, avoiding subfolder duplication.
+     */
+    private static function current_request_url(): string {
+        if (is_admin()) {
+            return '';
+        }
+
+        $raw_uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (empty($raw_uri)) {
+            return '';
+        }
+
+        $request_uri = wp_unslash($raw_uri);
+        $url         = set_url_scheme('//' . wp_unslash($_SERVER['HTTP_HOST'] ?? '') . $request_uri);
+        $url         = esc_url_raw($url);
+
+        return remove_query_arg(
+            array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'),
+            $url
+        );
+    }
+
+    /**
      * Check if a preset phase is available for a campaign, returning simulated timestamp or 0.
      * If unavailable, returns 0 and sets $error_reason.
      *
@@ -478,16 +501,7 @@ class Preview {
         ));
 
         // Preserve current URL for redirect on frontend (preserves pagination, query params)
-        $current_url = '';
-        if (!is_admin()) {
-            $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-            if (!empty($request_uri)) {
-                $current_url = remove_query_arg(
-                    array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'),
-                    home_url($request_uri)
-                );
-            }
-        }
+        $current_url = self::current_request_url();
 
         // Off (real time)
         if ($is_active) {
@@ -745,16 +759,7 @@ class Preview {
                 <form method="post" action="<?php echo esc_url(add_query_arg('sneakypeak_action', 'set_preview_custom')); ?>">
                     <?php wp_nonce_field('sneakypeak_set_preview_custom'); ?>
                     <?php
-                    $modal_redirect = '';
-                    if (!is_admin()) {
-                        $req_uri = $_SERVER['REQUEST_URI'] ?? '';
-                        if (!empty($req_uri)) {
-                            $modal_redirect = remove_query_arg(
-                                array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'redirect_to', 'preview_datetime'),
-                                home_url($req_uri)
-                            );
-                        }
-                    }
+                    $modal_redirect = self::current_request_url();
                     if (!empty($modal_redirect)): ?>
                         <input type="hidden" name="redirect_to" value="<?php echo esc_url($modal_redirect); ?>" />
                     <?php endif; ?>
