@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.5
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,14 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.0 =
+* Live Phase Price Enforcement: Added complete Live phase enforcement path across all WooCommerce price filters (`woocommerce_product_get_price`, `woocommerce_product_variation_get_price`, `woocommerce_product_get_sale_price`, `woocommerce_product_variation_get_sale_price`, `woocommerce_product_is_on_sale`, `woocommerce_variation_prices_price`, `woocommerce_variation_prices_sale_price`, `woocommerce_available_variation`, structured data, and Store API).
+* Independent Sale Timing: SneakyPeak now directly takes over timing during Live phase, ensuring sale prices display and charge correctly even when native WooCommerce sale schedule dates are blank or not yet started.
+* Variable Product Live Pricing: Formatted variable products to display "From" the lowest campaign sale price with struck-through regular price, while each variation enforces its own distinct sale price in dropdowns and cart.
+* Variation Price Partitioning: Added Live campaign marker to `woocommerce_variation_prices_hash` preventing price cache leaks across phase transitions.
+* Live Badge Visibility Fix: Expanded product card selectors for modern WooCommerce block themes (`.wc-block-product-template__item`, `.product-card`, etc.), implemented single product summary badge injection for block themes, added `wc_get_product(get_the_ID())` fallback in template filters, and added fallback gradient styling.
+* Admin Field Guidance & Diagnostics: Added helper note under Reveal Start field and updated diagnostics notice to clarify SneakyPeak takes over timing and native schedule dates can be left blank.
 
 = 1.2.5 =
 * Subfolder Install Redirect Fix: Added `current_request_url()` private helper that constructs request URLs with `set_url_scheme('//' . HTTP_HOST . REQUEST_URI)` rather than `home_url(REQUEST_URI)`, preventing duplicate subfolder paths (e.g. `/shop/shop/...`) on subfolder WordPress installations.

@@ -507,6 +507,7 @@ class MetaBox {
                     <td>
                         <input type="text" name="sneakypeak[reveal_start_datetime]" value="<?php echo esc_attr($settings['reveal_start_datetime'] ?? ''); ?>" class="regular-text" placeholder="YYYY-MM-DD HH:MM" required />
                         <p class="description"><strong><?php esc_html_e('Required.', 'sneakypeak'); ?></strong> <?php esc_html_e('When live prices unlock and the badge switches to the Live phase.', 'sneakypeak'); ?></p>
+                        <p class="description"><?php esc_html_e('During Live, SneakyPeak shows each product’s WooCommerce sale price, even if the product has no sale schedule. Leave WooCommerce’s sale schedule dates blank.', 'sneakypeak'); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -1348,7 +1349,7 @@ class MetaBox {
         }
         if ($products_with_wc_schedule > 0) {
             $warnings[] = sprintf(
-                __('%d targeted product(s) have native WooCommerce Sale Schedules set (_sale_price_dates_from/to). SneakyPeak independent reveal logic will override WooCommerce sale schedules, but clearing native dates is recommended to avoid confusion.', 'sneakypeak'),
+                __('%d targeted product(s) have native WooCommerce Sale Schedules set (_sale_price_dates_from/to). SneakyPeak takes over timing and enforces campaign sale prices during Live, but leaving WooCommerce sale schedule dates blank is recommended to avoid confusion.', 'sneakypeak'),
                 $products_with_wc_schedule
             );
         }

@@ -186,8 +186,9 @@ class Controller {
     public static function filter_body_class(array $classes): array {
         if (is_product()) {
             global $product;
-            if (is_a($product, 'WC_Product')) {
-                $res = Resolver::resolve($product);
+            $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+            if ($prod && is_a($prod, 'WC_Product')) {
+                $res = Resolver::resolve($prod);
                 if ($res['campaign'] !== null) {
                     $classes[] = 'sneakypeak-promo-single';
                     $classes[] = 'sneakypeak-campaign-' . $res['campaign']->get_id();
@@ -207,11 +208,12 @@ class Controller {
             return $html;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return $html;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null || self::$single_badge_rendered || strpos($html, 'sneakypeak-badge') !== false) {
             return $html;
         }
@@ -223,7 +225,7 @@ class Controller {
         }
 
         // Only attach to primary product image in gallery
-        if ((int) $attachment_id !== (int) $product->get_image_id()) {
+        if ((int) $attachment_id !== (int) $prod->get_image_id()) {
             return $html;
         }
 
@@ -247,11 +249,12 @@ class Controller {
             return;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null) {
             return;
         }
@@ -273,11 +276,12 @@ class Controller {
             return;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null) {
             return;
         }
@@ -315,6 +319,44 @@ class Controller {
                 '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
                 esc_attr($res['campaign']->get_id())
             );
+
+            // Variable products: format "From [sale price]" with struck-through regular price
+            if ($product->is_type('variable')) {
+                $children = $product->get_children();
+                $min_sale = PHP_FLOAT_MAX;
+                $min_reg  = 0.0;
+                $found_sale = false;
+
+                if (!empty($children)) {
+                    foreach ($children as $child_id) {
+                        $child_sale = get_post_meta($child_id, '_sale_price', true);
+                        $child_reg  = get_post_meta($child_id, '_regular_price', true);
+                        if ($child_sale !== '' && $child_sale !== null && (float) $child_sale > 0) {
+                            $val = (float) $child_sale;
+                            if ($val < $min_sale) {
+                                $min_sale = $val;
+                                $min_reg  = (float) $child_reg;
+                                $found_sale = true;
+                            }
+                        }
+                    }
+                }
+
+                if ($found_sale) {
+                    $prefix = (string) $res['campaign']->get_setting('teaser_variable_prefix', 'From');
+                    $prefix_html = !empty($prefix) ? '<span class="sneakypeak-from">' . esc_html($prefix) . ' </span>' : '';
+                    if ($min_reg > $min_sale) {
+                        $display_reg  = wc_get_price_to_display($product, array('price' => $min_reg));
+                        $display_sale = wc_get_price_to_display($product, array('price' => $min_sale));
+                        $formatted_price = wc_format_sale_price($display_reg, $display_sale) . $product->get_price_suffix();
+                    } else {
+                        $display_sale = wc_get_price_to_display($product, array('price' => $min_sale));
+                        $formatted_price = wc_price($display_sale) . $product->get_price_suffix();
+                    }
+                    return $prefix_html . $formatted_price . $marker;
+                }
+            }
+
             return $price_html . $marker;
         }
 
@@ -347,6 +389,7 @@ class Controller {
 
     /**
      * Early sale guard: enforce regular price during Scheduled and Teaser phases
+     * Live enforcement: enforce sale price during Live phase regardless of WooCommerce native schedule
      */
     public static function filter_product_get_price($price, $product) {
         if (self::should_guard_product($product)) {
@@ -354,6 +397,10 @@ class Controller {
             if ($reg !== '' && $reg !== null) {
                 return $reg;
             }
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
         }
         return $price;
     }
@@ -365,12 +412,20 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $price;
     }
 
     public static function filter_product_get_sale_price($sale_price, $product) {
         if (self::should_guard_product($product)) {
             return '';
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
         }
         return $sale_price;
     }
@@ -379,12 +434,20 @@ class Controller {
         if (self::should_guard_product($product)) {
             return '';
         }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $sale_price;
     }
 
     public static function filter_product_is_on_sale($is_on_sale, $product) {
         if (self::should_guard_product($product)) {
             return false;
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return true;
         }
         return $is_on_sale;
     }
@@ -396,6 +459,10 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($variation);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $price;
     }
 
@@ -406,6 +473,10 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($variation);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $sale_price;
     }
 
@@ -413,6 +484,11 @@ class Controller {
         $res = Resolver::resolve_for_guard($product);
         if ($res['campaign'] !== null) {
             $hash[] = 'sneakypeak_guard_phase_' . $res['phase'];
+        }
+        $res_live = Resolver::resolve($product);
+        if ($res_live['campaign'] !== null && $res_live['phase'] === Campaign::PHASE_LIVE) {
+            $hash[] = 'sneakypeak_live_campaign_' . $res_live['campaign']->get_id();
+            $hash[] = 'sneakypeak_live_phase';
         }
         $hash[] = 'sneakypeak_ctx_' . Resolver::get_preview_cache_context();
         return $hash;
@@ -423,6 +499,11 @@ class Controller {
             $reg = $product->get_regular_price();
             if ($reg !== '' && $reg !== null) {
                 $markup['price'] = wc_format_decimal($reg, wc_get_price_decimals());
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($product);
+            if ($live_sale !== null) {
+                $markup['price'] = wc_format_decimal($live_sale, wc_get_price_decimals());
             }
         }
         return $markup;
@@ -435,6 +516,20 @@ class Controller {
                 $data['display_price'] = wc_get_price_to_display($variation, array('price' => $reg));
                 $data['display_regular_price'] = wc_get_price_to_display($variation, array('price' => $reg));
                 $data['price_html'] = '';
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($variation);
+            if ($live_sale !== null) {
+                $disp_sale = wc_get_price_to_display($variation, array('price' => $live_sale));
+                $reg = $variation->get_regular_price();
+                $data['display_price'] = $disp_sale;
+                if ($reg !== '' && $reg !== null && (float) $reg > (float) $live_sale) {
+                    $disp_reg = wc_get_price_to_display($variation, array('price' => $reg));
+                    $data['display_regular_price'] = $disp_reg;
+                    $data['price_html'] = '<span class="price">' . wc_format_sale_price($disp_reg, $disp_sale) . $variation->get_price_suffix() . '</span>';
+                } else {
+                    $data['price_html'] = '<span class="price">' . wc_price($disp_sale) . $variation->get_price_suffix() . '</span>';
+                }
             }
         }
         return $data;
@@ -452,6 +547,16 @@ class Controller {
                 $prices['regular_price'] = $reg_minor;
                 $prices['sale_price'] = $reg_minor;
                 $prices['price_range'] = null;
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($product);
+            if ($live_sale !== null) {
+                $decimals = wc_get_price_decimals();
+                $minor_units = pow(10, $decimals);
+                $sale_minor = (string) round((float) $live_sale * $minor_units);
+
+                $prices['price'] = $sale_minor;
+                $prices['sale_price'] = $sale_minor;
             }
         }
         return $prices;
@@ -475,6 +580,29 @@ class Controller {
         }
         $res = Resolver::resolve_for_guard($product);
         return ($res['campaign'] !== null && ($res['phase'] === Campaign::PHASE_SCHEDULED || $res['phase'] === Campaign::PHASE_TEASER));
+    }
+
+    /**
+     * Get live enforced sale price for a product or variation if in Live phase.
+     * Mirror of the guard: active when Resolver::resolve returns Campaign::PHASE_LIVE.
+     *
+     * @param WC_Product|mixed $product
+     * @return string|null
+     */
+    private static function get_live_enforced_sale_price($product): ?string {
+        if (!$product || !is_a($product, 'WC_Product')) {
+            return null;
+        }
+        $res = Resolver::resolve($product);
+        if ($res['campaign'] === null || $res['phase'] !== Campaign::PHASE_LIVE) {
+            return null;
+        }
+        $price_source = Resolver::get_price_source();
+        $sale_price = $price_source->get_campaign_price($product, $res['campaign']);
+        if ($sale_price !== '' && (float) $sale_price > 0) {
+            return (string) $sale_price;
+        }
+        return null;
     }
 
     /**

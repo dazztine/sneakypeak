@@ -45,7 +45,7 @@
   }
 
   function applyBadges() {
-    var cardSelector = 'li.product, .product, .wc-block-grid__product, .wp-block-post, .type-product, article';
+    var cardSelector = 'li.product, .product, .wc-block-grid__product, .wc-block-product-template__item, .wp-block-post, .type-product, .product-card, .product-item, .product-small, .product-wrap, .entry-product, article, [data-product-id]';
     var excludedSelector = '.widget_shopping_cart, .woocommerce-mini-cart, .cart_item, .woocommerce-cart-form, .woocommerce-checkout, form.checkout, .checkout, .summary.entry-summary';
 
     // 1. Process cards marked with .sneakypeak-promo, .sneakypeak-teaser-wrap, or .sneakypeak-card-marker
@@ -57,13 +57,26 @@
         if (el.matches(cardSelector)) {
           card = el;
         } else {
-          return;
+          var loopLink = el.closest('a, .woocommerce-loop-product__link, .price');
+          if (loopLink && loopLink.parentElement) {
+            card = loopLink.parentElement.closest(cardSelector) || loopLink.parentElement;
+          }
         }
+      }
+      if (!card) {
+        return;
       }
 
       // Skip non-catalog contexts (cart, checkout, mini-cart, single summary)
       if (card.closest(excludedSelector) || card.matches(excludedSelector)) {
         return;
+      }
+
+      // On single product page, do not treat the primary product layout container as a catalog card
+      if (document.body && (document.body.classList.contains('single-product') || document.body.classList.contains('sneakypeak-promo-single'))) {
+        if (el.closest('.woocommerce-product-gallery, .summary, .entry-summary, .wp-block-woocommerce-product-gallery, .wp-block-woocommerce-product-summary')) {
+          return;
+        }
       }
 
       // Deduplicate: only one SneakyPeak badge per card
@@ -112,10 +125,27 @@
       card.appendChild(badgeEl);
     });
 
-    // 2. Single product page badge handling (gallery, summary fallback, or custom CSS selector)
-    if (document.body && document.body.classList.contains('sneakypeak-promo-single')) {
-      var singleMatch = document.body.className.match(/sneakypeak-campaign-(\d+)/);
-      var singleCid = singleMatch && singleMatch[1] ? parseInt(singleMatch[1], 10) : 0;
+    // 2. Single product page badge handling (gallery, summary, or custom CSS selector)
+    var isSingleProduct = !!(document.body && (
+      document.body.classList.contains('sneakypeak-promo-single') ||
+      document.body.classList.contains('single-product') ||
+      document.body.classList.contains('product-template-default')
+    )) || !!document.querySelector('.woocommerce-product-gallery, .summary.entry-summary, .wp-block-woocommerce-product-gallery, .wp-block-woocommerce-product-summary');
+
+    if (isSingleProduct) {
+      var singleCid = 0;
+      if (document.body) {
+        var singleMatch = document.body.className.match(/sneakypeak-campaign-(\d+)/);
+        if (singleMatch && singleMatch[1]) {
+          singleCid = parseInt(singleMatch[1], 10);
+        }
+      }
+      if (!singleCid) {
+        var marker = document.querySelector('.sneakypeak-card-marker[data-campaign-id], .sneakypeak-teaser-wrap[data-campaign-id]');
+        if (marker && marker.getAttribute('data-campaign-id')) {
+          singleCid = parseInt(marker.getAttribute('data-campaign-id'), 10);
+        }
+      }
       if (!singleCid) {
         var firstKey = Object.keys(config.campaigns)[0];
         singleCid = firstKey ? parseInt(firstKey, 10) : 0;
@@ -125,38 +155,55 @@
         var camp = config.campaigns[singleCid];
         var pos = camp.singlePosition || 'gallery';
 
-        // Custom selector placement
-        var customTarget = null;
-        if (pos === 'custom' && camp.singleCustomSelector) {
-          try {
-            customTarget = document.querySelector(camp.singleCustomSelector);
-          } catch (e) {
-            // Bad selector fails quietly
-            customTarget = null;
-          }
-          if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap')) {
-            var customBadge = createBadgeElement(singleCid, true);
-            if (customBadge) {
-              var ctComputed = window.getComputedStyle(customTarget);
-              if (ctComputed.position === 'static') {
-                customTarget.style.position = 'relative';
+        // Check if single badge is already rendered
+        var existingSingleBadge = document.querySelector('.sneakypeak-badge-single-wrap, .sneakypeak-single-summary-wrap .sneakypeak-badge-wrap, .sneakypeak-single-fallback-wrap .sneakypeak-badge-wrap');
+
+        if (!existingSingleBadge) {
+          if (pos === 'custom' && camp.singleCustomSelector) {
+            var customTarget = null;
+            try {
+              customTarget = document.querySelector(camp.singleCustomSelector);
+            } catch (e) {
+              customTarget = null;
+            }
+            if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap')) {
+              var customBadge = createBadgeElement(singleCid, true);
+              if (customBadge) {
+                var ctComputed = window.getComputedStyle(customTarget);
+                if (ctComputed.position === 'static') {
+                  customTarget.style.position = 'relative';
+                }
+                customTarget.appendChild(customBadge);
               }
-              customTarget.appendChild(customBadge);
+            } else if (!customTarget) {
+              // Custom target not found; fall back to gallery
+              pos = 'gallery';
             }
           }
-        }
 
-        // Gallery mode or fallback if custom selector target was not found
-        if (pos === 'gallery' || (pos === 'custom' && !customTarget)) {
-          var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery');
-          if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
-            var singleBadge = createBadgeElement(singleCid, true);
-            if (singleBadge) {
-              var galComputed = window.getComputedStyle(galleryImage);
-              if (galComputed.position === 'static') {
-                galleryImage.style.position = 'relative';
+          if (pos === 'summary') {
+            var summaryTarget = document.querySelector('.sneakypeak-single-summary-wrap, .summary.entry-summary, .wp-block-woocommerce-product-summary, .product-summary');
+            if (summaryTarget && !summaryTarget.querySelector('.sneakypeak-badge-wrap')) {
+              var summaryBadge = createBadgeElement(singleCid, true);
+              if (summaryBadge) {
+                var sumWrap = document.createElement('div');
+                sumWrap.className = 'sneakypeak-single-summary-wrap';
+                sumWrap.style.cssText = 'position:relative; margin-bottom:12px; display:inline-block; clear:both;';
+                sumWrap.appendChild(summaryBadge);
+                summaryTarget.insertBefore(sumWrap, summaryTarget.firstChild);
               }
-              galleryImage.appendChild(singleBadge);
+            }
+          } else if (pos === 'gallery') {
+            var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery, .wp-block-woocommerce-product-gallery');
+            if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
+              var singleBadge = createBadgeElement(singleCid, true);
+              if (singleBadge) {
+                var galComputed = window.getComputedStyle(galleryImage);
+                if (galComputed.position === 'static') {
+                  galleryImage.style.position = 'relative';
+                }
+                galleryImage.appendChild(singleBadge);
+              }
             }
           }
         }

@@ -50,6 +50,7 @@ ul.products li.product,
 
 /* Base Badge Text Tag */
 .sneakypeak-badge {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
     color: #ffffff !important;
     font-weight: 800 !important;
     line-height: 1.2 !important;
@@ -62,6 +63,14 @@ ul.products li.product,
     gap: 4px !important;
     box-sizing: border-box !important;
     animation: sneakypeakShimmer 3.5s ease-in-out infinite;
+}
+
+.sneakypeak-badge-live {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+}
+
+.sneakypeak-badge-teaser {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
 }
 
 /* Shapes */
@@ -182,3 +191,20 @@ ul.products li.product,
 body.sneakypeak-promo-single.sneakypeak-phase-teaser .woocommerce-product-gallery .onsale {
     display: none !important;
 }
+
+/* Single product summary badge wrapper */
+.sneakypeak-single-summary-wrap {
+    display: inline-block;
+    position: relative;
+    margin-bottom: 12px;
+    clear: both;
+}
+
+/* Variable product Live From prefix */
+.sneakypeak-from {
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-right: 4px;
+    color: inherit;
+}
+

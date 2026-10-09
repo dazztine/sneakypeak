@@ -3,7 +3,7 @@
  * Plugin Name: SneakyPeak — WooCommerce Sneak Peek & Campaign Reveal
  * Plugin URI:  https://github.com/dazztine/sneakypeak
  * Description: Generalized WooCommerce sneak peek campaigns: custom badges, masked teaser prices, early-sale price guards, and scheduled reveal phases.
- * Version:     1.2.5
+ * Version:     1.3.0
  * Author:      dazztine
  * Author URI:  https://github.com/dazztine
  * Text Domain: sneakypeak
@@ -15,7 +15,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SNEAKYPEAK_VERSION', '1.2.5');
+define('SNEAKYPEAK_VERSION', '1.3.0');
 define('SNEAKYPEAK_PLUGIN_FILE', __FILE__);
 define('SNEAKYPEAK_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SNEAKYPEAK_PLUGIN_URL', plugin_dir_url(__FILE__));

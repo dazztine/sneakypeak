@@ -101,7 +101,7 @@ class Resolver {
         foreach ($active_campaigns as $campaign) {
             if (self::is_product_in_campaign($product, $campaign)) {
                 // Must have a campaign price or custom teaser (Rule 4: No fake or estimated prices)
-                if (self::$price_source->has_campaign_price_or_teaser($product, $campaign)) {
+                if (self::get_price_source()->has_campaign_price_or_teaser($product, $campaign)) {
                     $result = array(
                         'campaign' => $campaign,
                         'phase'    => $campaign->get_phase($now),
@@ -158,7 +158,7 @@ class Resolver {
 
         foreach ($guarding_campaigns as $campaign) {
             if (self::is_product_in_campaign($product, $campaign)) {
-                if (self::$price_source->has_campaign_price_or_teaser($product, $campaign)) {
+                if (self::get_price_source()->has_campaign_price_or_teaser($product, $campaign)) {
                     $result = array(
                         'campaign' => $campaign,
                         'phase'    => $campaign->get_phase($now),
@@ -271,25 +271,34 @@ class Resolver {
      */
     public static function is_product_in_campaign(WC_Product $product, Campaign $campaign): bool {
         $product_id = $product->get_id();
+        $parent_id  = method_exists($product, 'get_parent_id') ? (int) $product->get_parent_id() : 0;
 
-        // Check exclusions first
-        $exclude_products = (array) $campaign->get_setting('exclude_products', array());
-        if (in_array($product_id, array_map('intval', $exclude_products), true)) {
+        // Check exclusions first (check both product/variation and parent)
+        $exclude_products = array_map('intval', (array) $campaign->get_setting('exclude_products', array()));
+        if (in_array($product_id, $exclude_products, true) || ($parent_id > 0 && in_array($parent_id, $exclude_products, true))) {
             return false;
         }
 
-        $exclude_categories = (array) $campaign->get_setting('exclude_categories', array());
+        $prod_cats = $product->get_category_ids();
+        $prod_tags = $product->get_tag_ids();
+        if ($parent_id > 0 && empty($prod_cats)) {
+            $parent = wc_get_product($parent_id);
+            if ($parent) {
+                $prod_cats = $parent->get_category_ids();
+                $prod_tags = $parent->get_tag_ids();
+            }
+        }
+
+        $exclude_categories = array_map('intval', (array) $campaign->get_setting('exclude_categories', array()));
         if (!empty($exclude_categories)) {
-            $prod_cats = $product->get_category_ids();
-            $exclude_cat_ints = array_map('intval', $exclude_categories);
-            if (!empty(array_intersect($prod_cats, $exclude_cat_ints))) {
+            if (!empty(array_intersect($prod_cats, $exclude_categories))) {
                 return false;
             }
         }
 
-        // Check target products
-        $target_products = (array) $campaign->get_setting('target_products', array());
-        if (in_array($product_id, array_map('intval', $target_products), true)) {
+        // Check target products (check both product/variation and parent)
+        $target_products = array_map('intval', (array) $campaign->get_setting('target_products', array()));
+        if (in_array($product_id, $target_products, true) || ($parent_id > 0 && in_array($parent_id, $target_products, true))) {
             return true;
         }
 
@@ -297,7 +306,6 @@ class Resolver {
         $target_categories = (array) $campaign->get_setting('target_categories', array());
         if (!empty($target_categories)) {
             $effective_cats = self::get_effective_category_ids($campaign);
-            $prod_cats = $product->get_category_ids();
             if (!empty(array_intersect($prod_cats, $effective_cats))) {
                 return true;
             }
@@ -306,7 +314,6 @@ class Resolver {
         // Check target tags
         $target_tags = (array) $campaign->get_setting('target_tags', array());
         if (!empty($target_tags)) {
-            $prod_tags = $product->get_tag_ids();
             $target_tag_ints = array_map('intval', $target_tags);
             if (!empty(array_intersect($prod_tags, $target_tag_ints))) {
                 return true;
