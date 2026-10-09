@@ -78,6 +78,33 @@ class Controller {
             return;
         }
 
+        $gfont_map = array(
+            'jost'       => 'Jost:wght@700;800',
+            'montserrat' => 'Montserrat:wght@700;800',
+            'poppins'    => 'Poppins:wght@700;800',
+            'outfit'     => 'Outfit:wght@700;800',
+            'inter'      => 'Inter:wght@700;800',
+            'questrial'  => 'Questrial',
+        );
+
+        $enqueued_fonts = array();
+        foreach ($active_campaigns as $camp) {
+            $phase = $camp->get_phase();
+            if ($phase === Campaign::PHASE_TEASER) {
+                $font_fam = (string) $camp->get_setting('teaser_font_family', 'inherit');
+                if (isset($gfont_map[$font_fam]) && !isset($enqueued_fonts[$font_fam])) {
+                    $enqueued_fonts[$font_fam] = true;
+                    $font_url = 'https://fonts.googleapis.com/css2?family=' . $gfont_map[$font_fam] . '&display=swap';
+                    wp_enqueue_style(
+                        'sneakypeak-gfont-' . sanitize_key($font_fam),
+                        esc_url($font_url),
+                        array(),
+                        null
+                    );
+                }
+            }
+        }
+
         wp_enqueue_style(
             'sneakypeak-frontend',
             SNEAKYPEAK_PLUGIN_URL . 'assets/css/sneakypeak.css',
@@ -495,24 +522,28 @@ class Controller {
             }
             $teaser_font_size    = absint($camp->get_setting('teaser_font_size', 0));
 
-            $teaser_font_css = '';
+            $resolved_font_family = '';
             if ($font_family_setting === 'custom' && !empty($custom_font_url)) {
-                $format = 'woff2';
-                if (preg_match('/\.ttf(\?.*)?$/i', $custom_font_url)) {
-                    $format = 'truetype';
-                } elseif (preg_match('/\.woff(\?.*)?$/i', $custom_font_url)) {
-                    $format = 'woff';
+                $path = wp_parse_url($custom_font_url, PHP_URL_PATH);
+                $ext  = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+                if (in_array($ext, array('woff2', 'woff', 'ttf'), true)) {
+                    $format = ($ext === 'ttf') ? 'truetype' : $ext;
+                    $font_name_escaped = esc_attr($custom_font_name);
+                    $font_url_escaped  = esc_url($custom_font_url);
+                    $css .= "@font-face {\n  font-family: '{$font_name_escaped}';\n  src: url('{$font_url_escaped}') format('{$format}');\n  font-weight: 700 800;\n  font-display: swap;\n}\n";
+                    $resolved_font_family = "'{$font_name_escaped}', sans-serif";
                 }
-                $css .= "@font-face {\n  font-family: '{$custom_font_name}';\n  src: url('{$custom_font_url}') format('{$format}');\n  font-weight: 700 800;\n  font-display: swap;\n}\n";
-                $teaser_font_css .= "font-family: '{$custom_font_name}', sans-serif !important;\n";
             } elseif (isset($gfont_map[$font_family_setting])) {
-                $google_fonts_needed[$font_family_setting] = $gfont_map[$font_family_setting];
-                $capitalized_font = ucfirst($font_family_setting);
-                $teaser_font_css .= "font-family: '{$capitalized_font}', sans-serif !important;\n";
+                $capitalized_font = esc_attr(ucfirst($font_family_setting));
+                $resolved_font_family = "'{$capitalized_font}', sans-serif";
             }
 
+            $teaser_font_rules = '';
+            if (!empty($resolved_font_family)) {
+                $teaser_font_rules .= "font-family: {$resolved_font_family} !important;\n";
+            }
             if ($teaser_font_size > 0) {
-                $teaser_font_css .= "font-size: {$teaser_font_size}px !important;\n";
+                $teaser_font_rules .= "font-size: {$teaser_font_size}px !important;\n";
             }
 
             $css .= "
@@ -531,19 +562,23 @@ class Controller {
                 }
                 .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-price {
                     color: {$bg_end} !important;
-                    {$teaser_font_css}
                 }
             ";
+
+            if (!empty($teaser_font_rules)) {
+                $css .= "
+                .sneakypeak-teaser-campaign-{$cid},
+                .sneakypeak-teaser-campaign-{$cid} *,
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-label,
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-price {
+                    {$teaser_font_rules}
+                }
+                ";
+            }
 
             if (!empty($custom_css)) {
                 $css .= "\n/* Custom CSS for Campaign #{$cid} */\n" . $custom_css . "\n";
             }
-        }
-
-        if (!empty($google_fonts_needed)) {
-            $gfont_query = implode('&family=', array_values($google_fonts_needed));
-            $import_url = 'https://fonts.googleapis.com/css2?family=' . $gfont_query . '&display=swap';
-            $css = "@import url('{$import_url}');\n" . $css;
         }
 
         return $css;

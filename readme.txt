@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,12 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.2.2 =
+* Single Product Mock Preview: Added interactive "Single product" mock preview tab in the campaign editor Badge Design section, mirroring single product layout with real-time positioning (Over main gallery image, Inside product summary, Custom CSS selector), nudge transforms, and Live/Teaser mode toggling.
+* Live Font Restyling: Google Fonts and custom uploaded fonts now restyle all editor previews live, including masked teaser prices, calculator outputs, shop card mock, and single product mock. Font size 0 behaves as inherit, and selecting "Theme default" cleans up external font links.
+* Storefront Font Fix: Removed conflicting `!important` inherit rules in CSS, enqueued Google Fonts cleanly on the storefront during Teaser phase via `wp_enqueue_style`, and scoped font-family/font-size directly to `.sneakypeak-teaser-campaign-{id}` elements.
+* Security & Migration Hardening: Sanitized custom CSS selectors on save, wrapped front-end querySelector in try-catch with quiet fallback to gallery, restricted font uploads strictly to manage_options users on campaign screens, and fixed nudge offset migration to check raw stored settings.
 
 = 1.2.1 =
 * Teaser Typography Customization: Curated geometric sans Google Fonts (Jost, Montserrat, Poppins, Outfit, Inter, Questrial) matching modern athletic/retail aesthetics (such as Adidas), plus custom font file upload (.woff2, .woff, .ttf) via WordPress Media Uploader and customizable font size.

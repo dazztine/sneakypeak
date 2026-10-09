@@ -142,7 +142,7 @@ ul.products li.product,
     padding-top: 8px !important;
     border-top: 1px dashed rgba(255, 75, 43, 0.4) !important;
     line-height: 1.3 !important;
-    font-family: inherit !important;
+    font-family: inherit;
     clear: both !important;
 }
 
@@ -164,7 +164,7 @@ ul.products li.product,
 
 .sneakypeak-teaser-price {
     display: block !important;
-    font-family: inherit !important;
+    font-family: inherit;
     font-size: 1.1em !important;
     font-weight: 800 !important;
     line-height: 1.3 !important;

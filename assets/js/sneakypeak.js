@@ -126,8 +126,14 @@
         var pos = camp.singlePosition || 'gallery';
 
         // Custom selector placement
+        var customTarget = null;
         if (pos === 'custom' && camp.singleCustomSelector) {
-          var customTarget = document.querySelector(camp.singleCustomSelector);
+          try {
+            customTarget = document.querySelector(camp.singleCustomSelector);
+          } catch (e) {
+            // Bad selector fails quietly
+            customTarget = null;
+          }
           if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap')) {
             var customBadge = createBadgeElement(singleCid, true);
             if (customBadge) {
@@ -138,8 +144,10 @@
               customTarget.appendChild(customBadge);
             }
           }
-        } else if (pos === 'gallery') {
-          // Main gallery fallback if not already injected via PHP
+        }
+
+        // Gallery mode or fallback if custom selector target was not found
+        if (pos === 'gallery' || (pos === 'custom' && !customTarget)) {
           var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery');
           if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
             var singleBadge = createBadgeElement(singleCid, true);

@@ -22,6 +22,7 @@ class Campaign {
     private int $id;
     private string $name;
     private array $meta;
+    private array $raw_meta = array();
 
     public function __construct(int $post_id) {
         $this->id = $post_id;
@@ -40,6 +41,7 @@ class Campaign {
     private function load_meta(): void {
         $defaults = self::get_default_settings();
         $stored = get_post_meta($this->id, '_sneakypeak_settings', true);
+        $this->raw_meta = is_array($stored) ? $stored : array();
         $this->meta = is_array($stored) ? wp_parse_args($stored, $defaults) : $defaults;
     }
 
@@ -120,8 +122,8 @@ class Campaign {
      * @return array{0: int, 1: int} [x, y]
      */
     public function get_nudge_offsets(): array {
-        $has_nudge_x = isset($this->meta['badge_nudge_x']) && $this->meta['badge_nudge_x'] !== '';
-        $has_nudge_y = isset($this->meta['badge_nudge_y']) && $this->meta['badge_nudge_y'] !== '';
+        $has_nudge_x = array_key_exists('badge_nudge_x', $this->raw_meta);
+        $has_nudge_y = array_key_exists('badge_nudge_y', $this->raw_meta);
 
         if ($has_nudge_x || $has_nudge_y) {
             $x = max(-100, min(100, (int) ($this->meta['badge_nudge_x'] ?? 0)));
@@ -129,7 +131,7 @@ class Campaign {
             return array($x, $y);
         }
 
-        // Migration from old corner offsets
+        // Migration from old corner offsets: runs only when neither nudge key exists in stored raw meta
         $corner = (string) ($this->meta['badge_corner'] ?? 'top-right');
         $top    = (int) ($this->meta['badge_top_offset'] ?? 0);
         $right  = (int) ($this->meta['badge_right_offset'] ?? 0);

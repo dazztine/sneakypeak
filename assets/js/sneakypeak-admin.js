@@ -10,14 +10,35 @@
       return;
     }
 
-    var $mockBadgeWrap = $('#sneakypeak-mock-badge-wrap');
-    var $mockBadge = $('#sneakypeak-mock-badge');
-    var $mockIcon = $('#sneakypeak-mock-icon');
-    var $mockText = $('#sneakypeak-mock-text');
-
     var currentPreviewPhase = 'teaser'; // 'teaser' or 'live'
 
+    var gFontMap = {
+      'jost': 'Jost:wght@700;800',
+      'montserrat': 'Montserrat:wght@700;800',
+      'poppins': 'Poppins:wght@700;800',
+      'outfit': 'Outfit:wght@700;800',
+      'inter': 'Inter:wght@700;800',
+      'questrial': 'Questrial'
+    };
+
+    // Tab toggle: Shop card | Single product
+    $('.sneakypeak-mock-tab-toggle').on('click', function (e) {
+      e.preventDefault();
+      $('.sneakypeak-mock-tab-toggle').removeClass('active button-primary').addClass('button-secondary');
+      $(this).removeClass('button-secondary').addClass('active button-primary');
+
+      var tab = $(this).data('tab');
+      if (tab === 'single') {
+        $('#sneakypeak-mock-shop-container').hide();
+        $('#sneakypeak-mock-single-container').show();
+      } else {
+        $('#sneakypeak-mock-single-container').hide();
+        $('#sneakypeak-mock-shop-container').show();
+      }
+    });
+
     function updateBadgePreview() {
+      // General Badge Settings
       var corner = $('select[name="sneakypeak[badge_corner]"]').val() || 'top-right';
       var shape = $('select[name="sneakypeak[badge_shape]"]').val() || 'ribbon';
       var size = $('select[name="sneakypeak[badge_size]"]').val() || 'medium';
@@ -25,93 +46,199 @@
       var icon = $('select[name="sneakypeak[badge_icon]"]').val() || 'star';
 
       var nudgeX = parseInt($('input[name="sneakypeak[badge_nudge_x]"]').val(), 10);
-      if (isNaN(nudgeX)) {
-        nudgeX = 0;
-      }
+      if (isNaN(nudgeX)) nudgeX = 0;
       var nudgeY = parseInt($('input[name="sneakypeak[badge_nudge_y]"]').val(), 10);
-      if (isNaN(nudgeY)) {
-        nudgeY = 0;
-      }
+      if (isNaN(nudgeY)) nudgeY = 0;
 
+      // Single Product Placement & Positioning Settings
+      var singlePlacement = $('#sneakypeak-single-badge-position').val() || 'gallery';
+      var singleCustomSelector = $('input[name="sneakypeak[single_badge_custom_selector]"]').val() || '';
+      var singleCorner = $('select[name="sneakypeak[single_badge_corner]"]').val() || 'top-right';
+      var singleNudgeX = parseInt($('input[name="sneakypeak[single_badge_nudge_x]"]').val(), 10);
+      if (isNaN(singleNudgeX)) singleNudgeX = 0;
+      var singleNudgeY = parseInt($('input[name="sneakypeak[single_badge_nudge_y]"]').val(), 10);
+      if (isNaN(singleNudgeY)) singleNudgeY = 0;
+
+      // Phase-specific colors & text
       var text, bgStart, bgEnd, textColor;
       if (currentPreviewPhase === 'live') {
         text = $('input[name="sneakypeak[badge_text_live]"]').val() || 'SALE NOW';
         bgStart = $('input[name="sneakypeak[badge_bg_start_live]"]').val() || '#ff416c';
         bgEnd = $('input[name="sneakypeak[badge_bg_end_live]"]').val() || '#ff4b2b';
         textColor = $('input[name="sneakypeak[badge_text_color_live]"]').val() || '#ffffff';
+
+        // Update pricing display in both mocks for live phase
+        $('.sneakypeak-mock-regular-price, .sneakypeak-mock-single-regular-price').addClass('strikethrough');
+        $('.sneakypeak-mock-live-price, .sneakypeak-mock-single-live-price').show();
+        $('.sneakypeak-mock-teaser-line, .sneakypeak-mock-single-teaser-line').hide();
       } else {
         text = $('input[name="sneakypeak[badge_text_teaser]"]').val() || 'SNEAK PEEK';
         bgStart = $('input[name="sneakypeak[badge_bg_start_teaser]"]').val() || '#ff416c';
         bgEnd = $('input[name="sneakypeak[badge_bg_end_teaser]"]').val() || '#ff4b2b';
         textColor = $('input[name="sneakypeak[badge_text_color_teaser]"]').val() || '#ffffff';
+
+        // Update pricing display in both mocks for teaser phase
+        $('.sneakypeak-mock-regular-price, .sneakypeak-mock-single-regular-price').removeClass('strikethrough');
+        $('.sneakypeak-mock-live-price, .sneakypeak-mock-single-live-price').hide();
+        $('.sneakypeak-mock-teaser-line, .sneakypeak-mock-single-teaser-line').show();
       }
 
-      // Update text
-      $mockText.text(text);
-
-      // Update icon
+      var iconHtml = '';
       if (icon === 'star') {
-        $mockIcon.html('&#9733;&nbsp;').show();
+        iconHtml = '&#9733;&nbsp;';
       } else if (icon === 'fire') {
-        $mockIcon.html('&#128293;&nbsp;').show();
+        iconHtml = '&#128293;&nbsp;';
       } else if (icon === 'tag') {
-        $mockIcon.html('&#127991;&nbsp;').show();
+        iconHtml = '&#127991;&nbsp;';
+      }
+
+      // --- 1. Update Shop Card Mock Badge ---
+      var $mockBadgeWrap = $('#sneakypeak-mock-badge-wrap');
+      var $mockBadge = $('#sneakypeak-mock-badge');
+      var $mockIcon = $('#sneakypeak-mock-icon');
+      var $mockText = $('#sneakypeak-mock-text');
+
+      $mockText.text(text);
+      if (iconHtml) {
+        $mockIcon.html(iconHtml).show();
       } else {
         $mockIcon.empty().hide();
       }
 
-      // Update classes
       $mockBadgeWrap.removeClass(function (index, className) {
-        return (className.match(/(^|\s)sneakypeak-corner-\S+/g) || []).join(' ');
-      }).removeClass(function (index, className) {
-        return (className.match(/(^|\s)sneakypeak-shape-\S+/g) || []).join(' ');
-      }).removeClass(function (index, className) {
-        return (className.match(/(^|\s)sneakypeak-size-\S+/g) || []).join(' ');
-      });
-
-      $mockBadgeWrap.addClass('sneakypeak-corner-' + corner);
-      $mockBadgeWrap.addClass('sneakypeak-shape-' + shape);
-      $mockBadgeWrap.addClass('sneakypeak-size-' + size);
+        return (className.match(/(^|\s)sneakypeak-corner-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-corner-' + corner + ' sneakypeak-shape-' + shape + ' sneakypeak-size-' + size);
 
       $mockBadge.removeClass(function (index, className) {
-        return (className.match(/(^|\s)sneakypeak-badge-shape-\S+/g) || []).join(' ');
-      }).removeClass(function (index, className) {
-        return (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
-      });
+        return (className.match(/(^|\s)sneakypeak-badge-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-badge-shape-' + shape + ' sneakypeak-badge-size-' + size);
 
-      $mockBadge.addClass('sneakypeak-badge-shape-' + shape);
-      $mockBadge.addClass('sneakypeak-badge-size-' + size);
-
-      // Position anchor based on corner and apply signed nudge transform
-      var wrapCss = {
-        top: '',
-        right: '',
-        bottom: '',
-        left: '',
+      var shopWrapCss = {
+        top: 'auto',
+        right: 'auto',
+        bottom: 'auto',
+        left: 'auto',
         transform: 'translate(' + nudgeX + 'px, ' + nudgeY + 'px)'
       };
-
       if (corner === 'top-right') {
-        wrapCss.top = '0px';
-        wrapCss.right = '0px';
+        shopWrapCss.top = '0px'; shopWrapCss.right = '0px';
       } else if (corner === 'top-left') {
-        wrapCss.top = '0px';
-        wrapCss.left = '0px';
+        shopWrapCss.top = '0px'; shopWrapCss.left = '0px';
       } else if (corner === 'bottom-left') {
-        wrapCss.bottom = '0px';
-        wrapCss.left = '0px';
+        shopWrapCss.bottom = '0px'; shopWrapCss.left = '0px';
       } else if (corner === 'bottom-right') {
-        wrapCss.bottom = '0px';
-        wrapCss.right = '0px';
+        shopWrapCss.bottom = '0px'; shopWrapCss.right = '0px';
       }
-      $mockBadgeWrap.css(wrapCss);
+      $mockBadgeWrap.css(shopWrapCss);
 
-      // Badge style
-      $mockBadge.css({
+      var badgeStyle = {
         background: 'linear-gradient(135deg, ' + bgStart + ' 0%, ' + bgEnd + ' 100%)',
         color: textColor,
         fontSize: fontSize + 'px'
-      });
+      };
+      $mockBadge.css(badgeStyle);
+
+      // --- 2. Update Single Product Mock Badge ---
+      var $singleGalleryWrap = $('#sneakypeak-mock-single-gallery-badge-wrap');
+      var $singleGalleryBadge = $('#sneakypeak-mock-single-gallery-badge');
+      var $singleGalleryIcon = $('#sneakypeak-mock-single-gallery-icon');
+      var $singleGalleryText = $('#sneakypeak-mock-single-gallery-text');
+
+      var $singleSummaryContainer = $('#sneakypeak-mock-single-summary-badge-container');
+      var $singleSummaryWrap = $('#sneakypeak-mock-single-summary-badge-wrap');
+      var $singleSummaryBadge = $('#sneakypeak-mock-single-summary-badge');
+      var $singleSummaryIcon = $('#sneakypeak-mock-single-summary-icon');
+      var $singleSummaryText = $('#sneakypeak-mock-single-summary-text');
+      var $singleCustomNote = $('#sneakypeak-mock-single-custom-note');
+
+      // Update contents and styling on both potential single badge elements
+      $singleGalleryText.text(text);
+      $singleSummaryText.text(text);
+
+      if (iconHtml) {
+        $singleGalleryIcon.html(iconHtml).show();
+        $singleSummaryIcon.html(iconHtml).show();
+      } else {
+        $singleGalleryIcon.empty().hide();
+        $singleSummaryIcon.empty().hide();
+      }
+
+      $singleGalleryBadge.css(badgeStyle);
+      $singleSummaryBadge.css(badgeStyle);
+
+      $singleGalleryWrap.removeClass(function (index, className) {
+        return (className.match(/(^|\s)sneakypeak-corner-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-corner-' + singleCorner + ' sneakypeak-shape-' + shape + ' sneakypeak-size-' + size);
+
+      $singleGalleryBadge.removeClass(function (index, className) {
+        return (className.match(/(^|\s)sneakypeak-badge-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-badge-shape-' + shape + ' sneakypeak-badge-size-' + size);
+
+      $singleSummaryWrap.removeClass(function (index, className) {
+        return (className.match(/(^|\s)sneakypeak-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-shape-' + shape + ' sneakypeak-size-' + size);
+
+      $singleSummaryBadge.removeClass(function (index, className) {
+        return (className.match(/(^|\s)sneakypeak-badge-shape-\S+/g) || []).join(' ') + ' ' +
+               (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
+      }).addClass('sneakypeak-badge-shape-' + shape + ' sneakypeak-badge-size-' + size);
+
+      // Handle placement mode visibility & coordinates
+      if (singlePlacement === 'gallery') {
+        $singleGalleryWrap.show();
+        $singleSummaryContainer.hide();
+        $singleCustomNote.hide();
+
+        var galleryWrapCss = {
+          top: 'auto',
+          right: 'auto',
+          bottom: 'auto',
+          left: 'auto',
+          transform: 'translate(' + singleNudgeX + 'px, ' + singleNudgeY + 'px)'
+        };
+        if (singleCorner === 'top-right') {
+          galleryWrapCss.top = '0px'; galleryWrapCss.right = '0px';
+        } else if (singleCorner === 'top-left') {
+          galleryWrapCss.top = '0px'; galleryWrapCss.left = '0px';
+        } else if (singleCorner === 'bottom-left') {
+          galleryWrapCss.bottom = '0px'; galleryWrapCss.left = '0px';
+        } else if (singleCorner === 'bottom-right') {
+          galleryWrapCss.bottom = '0px'; galleryWrapCss.right = '0px';
+        }
+        $singleGalleryWrap.css(galleryWrapCss);
+
+      } else if (singlePlacement === 'summary') {
+        $singleGalleryWrap.hide();
+        $singleSummaryContainer.show();
+        $singleCustomNote.hide();
+
+        $singleSummaryWrap.css({
+          transform: 'translate(' + singleNudgeX + 'px, ' + singleNudgeY + 'px)'
+        });
+
+      } else if (singlePlacement === 'custom') {
+        $singleGalleryWrap.hide();
+        $singleSummaryContainer.show();
+        $singleCustomNote.show();
+
+        var trimmedSelector = $.trim(singleCustomSelector);
+        if (trimmedSelector === '') {
+          $('#sneakypeak-mock-single-custom-note-text').text("No selector set.");
+        } else {
+          $('#sneakypeak-mock-single-custom-note-text').text("Preview is approximate. The real position depends on your theme’s selector.");
+        }
+
+        $singleSummaryWrap.css({
+          transform: 'translate(' + singleNudgeX + 'px, ' + singleNudgeY + 'px)'
+        });
+      }
     }
 
     // Phase toggle switch for live mock preview
@@ -123,8 +250,8 @@
       updateBadgePreview();
     });
 
-    // Event listeners on form inputs
-    $('select[name^="sneakypeak[badge_"], input[name^="sneakypeak[badge_"]').on('input change', function () {
+    // Event listeners on badge & single placement form inputs
+    $('select[name^="sneakypeak[badge_"], input[name^="sneakypeak[badge_"], select[name^="sneakypeak[single_badge_"], input[name^="sneakypeak[single_badge_"]').on('input change', function () {
       updateBadgePreview();
     });
 
@@ -140,10 +267,9 @@
       });
     }
 
-    // Teaser Calculator
+    // Teaser Calculator Masking
     function maskPriceNumeric(amount, rule) {
       var numStr = Number(amount).toFixed(2);
-      // split with thousand commas if >= 1000
       var parts = numStr.split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       var formatted = parts.join('.');
@@ -184,55 +310,93 @@
       var symbol = window.sneakypeakAdminData ? window.sneakypeakAdminData.currencySymbol : '₱';
 
       var fontFamily = $('select[name="sneakypeak[teaser_font_family]"]').val() || 'inherit';
-      var customFontUrl = $('input[name="sneakypeak[teaser_font_custom_url]"]').val() || '';
-      var customFontName = $('input[name="sneakypeak[teaser_font_custom_name]"]').val() || 'SPCustomFont';
+      var customFontUrl = $.trim($('input[name="sneakypeak[teaser_font_custom_url]"]').val() || '');
+      var customFontName = $.trim($('input[name="sneakypeak[teaser_font_custom_name]"]').val() || 'SPCustomFont');
       var customFontSize = parseInt($('input[name="sneakypeak[teaser_font_size]"]').val(), 10) || 0;
 
       var maskedSimple = maskPriceNumeric(samplePrice, rule);
       var maskedVariable = prefix ? prefix + ' ' + symbol + maskedSimple : symbol + maskedSimple;
 
+      // Update Calculator output texts
       $('#sneakypeak-calc-output-simple').text(label + ' ' + symbol + maskedSimple);
       $('#sneakypeak-calc-output-variable').text(label + ' ' + maskedVariable);
 
-      // Dynamically load Google Font in admin preview if selected
+      // Update Mock Card teaser line texts
+      $('.sneakypeak-mock-teaser-line .sneakypeak-teaser-label, .sneakypeak-mock-single-teaser-line .sneakypeak-teaser-label').text(label);
+      $('.sneakypeak-mock-teaser-line .sneakypeak-teaser-price, .sneakypeak-mock-single-teaser-line .sneakypeak-teaser-price').text(symbol + maskedSimple);
+
+      // Manage Fonts in Admin Head
       var resolvedFamily = 'inherit';
-      if (fontFamily === 'custom') {
-        if (customFontUrl) {
-          var fontFaceId = 'sneakypeak-custom-font-face';
-          var $existingStyle = $('#' + fontFaceId);
-          var cssRule = '@font-face { font-family: "' + customFontName + '"; src: url("' + customFontUrl + '"); font-weight: 700 800; font-display: swap; }';
-          if (!$existingStyle.length) {
-            $('head').append('<style id="' + fontFaceId + '">' + cssRule + '</style>');
+      var $gFontLink = $('#sneakypeak-admin-gfont');
+      var $customFontStyle = $('#sneakypeak-admin-custom-font');
+
+      if (fontFamily === 'inherit') {
+        $gFontLink.remove();
+        $customFontStyle.remove();
+        resolvedFamily = 'inherit';
+
+      } else if (fontFamily === 'custom') {
+        $gFontLink.remove();
+        if (customFontUrl && /\.(woff2|woff|ttf)(\?.*)?$/i.test(customFontUrl)) {
+          var format = 'woff2';
+          if (/\.ttf(\?.*)?$/i.test(customFontUrl)) {
+            format = 'truetype';
+          } else if (/\.woff(\?.*)?$/i.test(customFontUrl)) {
+            format = 'woff';
+          }
+          var cssRule = '@font-face { font-family: "' + customFontName + '"; src: url("' + customFontUrl + '") format("' + format + '"); font-weight: 700 800; font-display: swap; }';
+          if (!$customFontStyle.length) {
+            $('head').append('<style id="sneakypeak-admin-custom-font">' + cssRule + '</style>');
           } else {
-            $existingStyle.text(cssRule);
+            $customFontStyle.text(cssRule);
           }
           resolvedFamily = '"' + customFontName + '", sans-serif';
+        } else {
+          $customFontStyle.remove();
+          resolvedFamily = 'inherit';
         }
-      } else if (fontFamily !== 'inherit') {
-        var gFontMap = {
-          'jost': 'Jost:wght@700;800',
-          'montserrat': 'Montserrat:wght@700;800',
-          'poppins': 'Poppins:wght@700;800',
-          'outfit': 'Outfit:wght@700;800',
-          'inter': 'Inter:wght@700;800',
-          'questrial': 'Questrial'
-        };
-        if (gFontMap[fontFamily]) {
-          var linkId = 'sneakypeak-gfont-' + fontFamily;
-          if (!$('#' + linkId).length) {
-            $('head').append('<link id="' + linkId + '" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + gFontMap[fontFamily] + '&display=swap">');
-          }
-          resolvedFamily = '"' + fontFamily.charAt(0).toUpperCase() + fontFamily.slice(1) + '", sans-serif';
+
+      } else if (gFontMap[fontFamily]) {
+        $customFontStyle.remove();
+        var gFontUrl = 'https://fonts.googleapis.com/css2?family=' + gFontMap[fontFamily] + '&display=swap';
+        if (!$gFontLink.length) {
+          $('head').append('<link id="sneakypeak-admin-gfont" rel="stylesheet" href="' + gFontUrl + '">');
+        } else if ($gFontLink.attr('href') !== gFontUrl) {
+          $gFontLink.attr('href', gFontUrl);
         }
+        var capitalized = fontFamily.charAt(0).toUpperCase() + fontFamily.slice(1);
+        resolvedFamily = '"' + capitalized + '", sans-serif';
+
+      } else {
+        $gFontLink.remove();
+        $customFontStyle.remove();
+        resolvedFamily = 'inherit';
       }
 
-      var calcCss = { 'font-family': resolvedFamily };
+      // Apply typography to all teaser price previews
+      var $typographyTargets = $([
+        '#sneakypeak-calc-output-simple',
+        '#sneakypeak-calc-output-variable',
+        '.sneakypeak-mock-teaser-line',
+        '.sneakypeak-mock-teaser-line *',
+        '.sneakypeak-mock-single-teaser-line',
+        '.sneakypeak-mock-single-teaser-line *'
+      ].join(', '));
+
+      $typographyTargets.css('font-family', resolvedFamily);
+
+      var $sizeTargets = $([
+        '#sneakypeak-calc-output-simple',
+        '#sneakypeak-calc-output-variable',
+        '.sneakypeak-mock-teaser-line .sneakypeak-teaser-price',
+        '.sneakypeak-mock-single-teaser-line .sneakypeak-teaser-price'
+      ].join(', '));
+
       if (customFontSize > 0) {
-        calcCss['font-size'] = customFontSize + 'px';
+        $sizeTargets.css('font-size', customFontSize + 'px');
       } else {
-        calcCss['font-size'] = '';
+        $sizeTargets.css('font-size', '');
       }
-      $('#sneakypeak-calc-output-simple, #sneakypeak-calc-output-variable').css(calcCss);
     }
 
     $('#sneakypeak-calc-sample-price, select[name="sneakypeak[mask_rule]"], input[name="sneakypeak[teaser_label]"], input[name="sneakypeak[teaser_variable_prefix]"], select[name="sneakypeak[teaser_font_family]"], input[name="sneakypeak[teaser_font_custom_url]"], input[name="sneakypeak[teaser_font_custom_name]"], input[name="sneakypeak[teaser_font_size]"]')
@@ -245,6 +409,11 @@
       } else {
         $('#sneakypeak-single-custom-selector-row').hide();
       }
+      updateBadgePreview();
+    });
+
+    $('input[name="sneakypeak[single_badge_custom_selector]"]').on('input change', function () {
+      updateBadgePreview();
     });
 
     // Teaser font family toggle
