@@ -79,11 +79,11 @@ class Controller {
         }
 
         $gfont_map = array(
-            'jost'       => 'Jost:wght@700;800',
-            'montserrat' => 'Montserrat:wght@700;800',
-            'poppins'    => 'Poppins:wght@700;800',
-            'outfit'     => 'Outfit:wght@700;800',
-            'inter'      => 'Inter:wght@700;800',
+            'jost'       => 'Jost:wght@400;600;700',
+            'montserrat' => 'Montserrat:wght@400;600;700',
+            'poppins'    => 'Poppins:wght@400;600;700',
+            'outfit'     => 'Outfit:wght@400;600;700',
+            'inter'      => 'Inter:wght@400;600;700',
             'questrial'  => 'Questrial',
         );
 
@@ -530,7 +530,7 @@ class Controller {
                     $format = ($ext === 'ttf') ? 'truetype' : $ext;
                     $font_name_escaped = esc_attr($custom_font_name);
                     $font_url_escaped  = esc_url($custom_font_url);
-                    $css .= "@font-face {\n  font-family: '{$font_name_escaped}';\n  src: url('{$font_url_escaped}') format('{$format}');\n  font-weight: 700 800;\n  font-display: swap;\n}\n";
+                    $css .= "@font-face {\n  font-family: '{$font_name_escaped}';\n  src: url('{$font_url_escaped}') format('{$format}');\n  font-weight: 400 700;\n  font-display: swap;\n}\n";
                     $resolved_font_family = "'{$font_name_escaped}', sans-serif";
                 }
             } elseif (isset($gfont_map[$font_family_setting])) {
@@ -560,8 +560,15 @@ class Controller {
                     color: {$text_col} !important;
                     font-size: {$font_size}px !important;
                 }
+                .sneakypeak-teaser-campaign-{$cid} {
+                    font-weight: 400;
+                }
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-label {
+                    font-weight: 600 !important;
+                }
                 .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-price {
                     color: {$bg_end} !important;
+                    font-weight: 700 !important;
                 }
             ";
 

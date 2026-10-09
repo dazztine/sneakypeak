@@ -13,11 +13,11 @@
     var currentPreviewPhase = 'teaser'; // 'teaser' or 'live'
 
     var gFontMap = {
-      'jost': 'Jost:wght@700;800',
-      'montserrat': 'Montserrat:wght@700;800',
-      'poppins': 'Poppins:wght@700;800',
-      'outfit': 'Outfit:wght@700;800',
-      'inter': 'Inter:wght@700;800',
+      'jost': 'Jost:wght@400;600;700',
+      'montserrat': 'Montserrat:wght@400;600;700',
+      'poppins': 'Poppins:wght@400;600;700',
+      'outfit': 'Outfit:wght@400;600;700',
+      'inter': 'Inter:wght@400;600;700',
       'questrial': 'Questrial'
     };
 
@@ -344,7 +344,7 @@
           } else if (/\.woff(\?.*)?$/i.test(customFontUrl)) {
             format = 'woff';
           }
-          var cssRule = '@font-face { font-family: "' + customFontName + '"; src: url("' + customFontUrl + '") format("' + format + '"); font-weight: 700 800; font-display: swap; }';
+          var cssRule = '@font-face { font-family: "' + customFontName + '"; src: url("' + customFontUrl + '") format("' + format + '"); font-weight: 400 700; font-display: swap; }';
           if (!$customFontStyle.length) {
             $('head').append('<style id="sneakypeak-admin-custom-font">' + cssRule + '</style>');
           } else {
@@ -427,25 +427,35 @@
     });
 
     // WordPress Media Uploader for custom font file (.woff2, .woff, .ttf)
+    var fontMediaUploader;
     $('#sneakypeak-upload-font-button').on('click', function (e) {
       e.preventDefault();
-      var mediaUploader;
-      if (mediaUploader) {
-        mediaUploader.open();
+      if (fontMediaUploader) {
+        fontMediaUploader.open();
         return;
       }
-      mediaUploader = wp.media({
+
+      if (window.sneakypeakAdminData && window.sneakypeakAdminData.postId) {
+        if (typeof wp !== 'undefined' && wp.media && wp.media.view && wp.media.view.settings) {
+          if (!wp.media.view.settings.post) {
+            wp.media.view.settings.post = {};
+          }
+          wp.media.view.settings.post.id = window.sneakypeakAdminData.postId;
+        }
+      }
+
+      fontMediaUploader = wp.media({
         title: 'Choose or Upload Font File',
         button: { text: 'Use this font' },
         multiple: false
       });
 
-      mediaUploader.on('select', function () {
-        var attachment = mediaUploader.state().get('selection').first().toJSON();
+      fontMediaUploader.on('select', function () {
+        var attachment = fontMediaUploader.state().get('selection').first().toJSON();
         $('#sneakypeak-custom-font-url').val(attachment.url).trigger('change');
       });
 
-      mediaUploader.open();
+      fontMediaUploader.open();
     });
 
     // Initial run

@@ -28,20 +28,51 @@ class MetaBox {
         add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_admin_assets'));
         add_action('admin_notices', array(__CLASS__, 'display_admin_notices'));
         add_filter('upload_mimes', array(__CLASS__, 'filter_upload_mimes'));
+        add_filter('wp_check_filetype_and_ext', array(__CLASS__, 'check_filetype_and_ext'), 10, 4);
     }
 
     /**
-     * Allow font uploads (.woff, .woff2, .ttf) only for manage_options users on campaign screens
+     * Check if the current request is an upload from the campaign editor.
+     * Does NOT use get_current_screen().
+     * Strictly requires current_user_can('manage_options') and a sneakypeak_campaign post context.
+     */
+    public static function is_campaign_upload_request(): bool {
+        if (!current_user_can('manage_options')) {
+            return false;
+        }
+
+        $post_id = 0;
+        if (isset($_REQUEST['post_id'])) {
+            $post_id = absint($_REQUEST['post_id']);
+        } elseif (isset($_REQUEST['post'])) {
+            $post_id = absint($_REQUEST['post']);
+        }
+
+        if ($post_id > 0) {
+            $post = get_post($post_id);
+            if ($post && $post->post_type === 'sneakypeak_campaign') {
+                return true;
+            }
+        }
+
+        if (isset($_REQUEST['post_type']) && $_REQUEST['post_type'] === 'sneakypeak_campaign') {
+            return true;
+        }
+
+        global $post;
+        if ($post instanceof \WP_Post && $post->post_type === 'sneakypeak_campaign') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Allow font uploads (.woff, .woff2, .ttf) only when current_user_can('manage_options')
+     * and the request is an upload from the campaign editor.
      */
     public static function filter_upload_mimes(array $mimes): array {
-        if (!current_user_can('manage_options')) {
-            return $mimes;
-        }
-        if (!function_exists('get_current_screen')) {
-            return $mimes;
-        }
-        $screen = get_current_screen();
-        if (!$screen || $screen->post_type !== 'sneakypeak_campaign') {
+        if (!self::is_campaign_upload_request()) {
             return $mimes;
         }
 
@@ -49,6 +80,36 @@ class MetaBox {
         $mimes['woff2'] = 'font/woff2';
         $mimes['ttf']   = 'font/ttf';
         return $mimes;
+    }
+
+    /**
+     * Filter wp_check_filetype_and_ext so .woff, .woff2, and .ttf pass WordPress content check.
+     */
+    public static function check_filetype_and_ext($data, $file, $filename, $mimes = null) {
+        if (!self::is_campaign_upload_request()) {
+            return $data;
+        }
+
+        if (!is_array($data)) {
+            $data = array('ext' => false, 'type' => false, 'proper_filename' => false);
+        }
+
+        $ext = strtolower(pathinfo((string) $filename, PATHINFO_EXTENSION));
+        if ($ext === 'woff2') {
+            $data['ext']  = 'woff2';
+            $data['type'] = 'font/woff2';
+            $data['proper_filename'] = false;
+        } elseif ($ext === 'woff') {
+            $data['ext']  = 'woff';
+            $data['type'] = 'font/woff';
+            $data['proper_filename'] = false;
+        } elseif ($ext === 'ttf') {
+            $data['ext']  = 'ttf';
+            $data['type'] = 'font/ttf';
+            $data['proper_filename'] = false;
+        }
+
+        return $data;
     }
 
     public static function display_admin_notices(): void {
@@ -110,7 +171,11 @@ class MetaBox {
                 true
             );
 
+            global $post;
+            $post_id = ($post && !empty($post->ID)) ? (int) $post->ID : 0;
+
             wp_localize_script('sneakypeak-admin-designer', 'sneakypeakAdminData', array(
+                'postId'         => $post_id,
                 'currencySymbol' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '₱',
             ));
         }
@@ -648,7 +713,7 @@ class MetaBox {
                             <th scope="row"><?php esc_html_e('Target CSS Selector', 'sneakypeak'); ?></th>
                             <td>
                                 <input type="text" name="sneakypeak[single_badge_custom_selector]" value="<?php echo esc_attr($settings['single_badge_custom_selector'] ?? ''); ?>" class="regular-text" placeholder=".product-gallery, .entry-summary, etc." />
-                                <p class="description"><?php esc_html_e('Element selector where the badge will be injected on single product pages.', 'sneakypeak'); ?></p>
+                                <p class="description"><?php esc_html_e('Element selector where the badge will be injected on single product pages. Unsupported characters are removed.', 'sneakypeak'); ?></p>
                             </td>
                         </tr>
                         <tr>
