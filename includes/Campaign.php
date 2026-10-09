@@ -79,10 +79,20 @@ class Campaign {
             'badge_bg_end_live'      => '#ff4b2b',
             'badge_text_color_live'  => '#ffffff',
             'badge_custom_css'       => '',
+            // Single Product Badge Placement Settings
+            'single_badge_position'        => 'gallery', // gallery (over main image), summary (inside summary above title), custom (CSS selector)
+            'single_badge_custom_selector' => '',
+            'single_badge_corner'          => 'top-right',
+            'single_badge_nudge_x'         => 0,
+            'single_badge_nudge_y'         => 0,
             // Teaser settings
             'teaser_label'           => 'Sale Price:',
             'teaser_variable_prefix' => 'From',
             'mask_rule'              => 'keep_first', // keep_first | mask_last_3
+            'teaser_font_family'     => 'inherit',    // inherit, jost, montserrat, poppins, outfit, inter, questrial, custom
+            'teaser_font_custom_url' => '',
+            'teaser_font_custom_name'=> '',
+            'teaser_font_size'       => 0,            // 0 = theme default
         );
     }
 
@@ -145,6 +155,17 @@ class Campaign {
 
         $x = max(-100, min(100, $x));
         $y = max(-100, min(100, $y));
+        return array($x, $y);
+    }
+
+    /**
+     * Get single product badge nudge offsets [x, y].
+     *
+     * @return array{0: int, 1: int} [x, y]
+     */
+    public function get_single_nudge_offsets(): array {
+        $x = max(-100, min(100, (int) ($this->meta['single_badge_nudge_x'] ?? 0)));
+        $y = max(-100, min(100, (int) ($this->meta['single_badge_nudge_y'] ?? 0)));
         return array($x, $y);
     }
 

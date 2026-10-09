@@ -1,6 +1,6 @@
 # SneakyPeak — WooCommerce Sneak Peek & Campaign Reveal
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
 [![WordPress](https://img.shields.io/badge/wordpress-6.2%2B-blue.svg)](https://wordpress.org)
 [![WooCommerce](https://img.shields.io/badge/woocommerce-8.0%2B-purple.svg)](https://woocommerce.com)
 [![PHP](https://img.shields.io/badge/php-7.4%2B-8892BF.svg)](https://php.net)
@@ -87,6 +87,13 @@ Most flash sale plugins suffer from two major flaws:
   - Select shapes: **Ribbon**, **Pill**, **Circle**, or **Flag**.
   - Fine-tune positioning using signed **Horizontal (X)** and **Vertical (Y)** nudge inputs in pixels.
   - Configure icons (Gold Star ★, Fire 🔥, Price Tag 🏷, or None), gradient backgrounds, typography, and custom campaign CSS.
+- **Single Product Page Placement Controls**:
+  - Granular control over single product view: choose between **Over main gallery image**, **Inside product summary (above title/price)**, or **Custom CSS selector**.
+  - Independent corner anchoring and fine-tuning signed nudges (X/Y) specifically for single product view.
+- **Typography & Font Customization**:
+  - Curated Google Fonts matching modern retail & athletic aesthetics (such as Adidas): **Jost** (Avant Garde / Futura-style), **Montserrat**, **Poppins**, **Outfit**, **Inter**, and **Questrial**.
+  - Upload custom brand fonts (`.woff2`, `.woff`, `.ttf`) directly via the WordPress Media Uploader.
+  - Custom font size controls with live interactive preview in wp-admin.
 - **Masked Teaser Pricing**:
   - Two masking modes: `keep_first` (e.g. `₱8,499.00` → `₱8,???`) or `mask_last_3` (e.g. `₱12,500.00` → `₱12,???`).
   - Interactive teaser calculator directly inside wp-admin.

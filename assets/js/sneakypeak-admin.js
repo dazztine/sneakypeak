@@ -183,15 +183,101 @@
       var prefix = $('input[name="sneakypeak[teaser_variable_prefix]"]').val() || 'From';
       var symbol = window.sneakypeakAdminData ? window.sneakypeakAdminData.currencySymbol : '₱';
 
+      var fontFamily = $('select[name="sneakypeak[teaser_font_family]"]').val() || 'inherit';
+      var customFontUrl = $('input[name="sneakypeak[teaser_font_custom_url]"]').val() || '';
+      var customFontName = $('input[name="sneakypeak[teaser_font_custom_name]"]').val() || 'SPCustomFont';
+      var customFontSize = parseInt($('input[name="sneakypeak[teaser_font_size]"]').val(), 10) || 0;
+
       var maskedSimple = maskPriceNumeric(samplePrice, rule);
       var maskedVariable = prefix ? prefix + ' ' + symbol + maskedSimple : symbol + maskedSimple;
 
       $('#sneakypeak-calc-output-simple').text(label + ' ' + symbol + maskedSimple);
       $('#sneakypeak-calc-output-variable').text(label + ' ' + maskedVariable);
+
+      // Dynamically load Google Font in admin preview if selected
+      var resolvedFamily = 'inherit';
+      if (fontFamily === 'custom') {
+        if (customFontUrl) {
+          var fontFaceId = 'sneakypeak-custom-font-face';
+          var $existingStyle = $('#' + fontFaceId);
+          var cssRule = '@font-face { font-family: "' + customFontName + '"; src: url("' + customFontUrl + '"); font-weight: 700 800; font-display: swap; }';
+          if (!$existingStyle.length) {
+            $('head').append('<style id="' + fontFaceId + '">' + cssRule + '</style>');
+          } else {
+            $existingStyle.text(cssRule);
+          }
+          resolvedFamily = '"' + customFontName + '", sans-serif';
+        }
+      } else if (fontFamily !== 'inherit') {
+        var gFontMap = {
+          'jost': 'Jost:wght@700;800',
+          'montserrat': 'Montserrat:wght@700;800',
+          'poppins': 'Poppins:wght@700;800',
+          'outfit': 'Outfit:wght@700;800',
+          'inter': 'Inter:wght@700;800',
+          'questrial': 'Questrial'
+        };
+        if (gFontMap[fontFamily]) {
+          var linkId = 'sneakypeak-gfont-' + fontFamily;
+          if (!$('#' + linkId).length) {
+            $('head').append('<link id="' + linkId + '" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + gFontMap[fontFamily] + '&display=swap">');
+          }
+          resolvedFamily = '"' + fontFamily.charAt(0).toUpperCase() + fontFamily.slice(1) + '", sans-serif';
+        }
+      }
+
+      var calcCss = { 'font-family': resolvedFamily };
+      if (customFontSize > 0) {
+        calcCss['font-size'] = customFontSize + 'px';
+      } else {
+        calcCss['font-size'] = '';
+      }
+      $('#sneakypeak-calc-output-simple, #sneakypeak-calc-output-variable').css(calcCss);
     }
 
-    $('#sneakypeak-calc-sample-price, select[name="sneakypeak[mask_rule]"], input[name="sneakypeak[teaser_label]"], input[name="sneakypeak[teaser_variable_prefix]"]')
+    $('#sneakypeak-calc-sample-price, select[name="sneakypeak[mask_rule]"], input[name="sneakypeak[teaser_label]"], input[name="sneakypeak[teaser_variable_prefix]"], select[name="sneakypeak[teaser_font_family]"], input[name="sneakypeak[teaser_font_custom_url]"], input[name="sneakypeak[teaser_font_custom_name]"], input[name="sneakypeak[teaser_font_size]"]')
       .on('input change', updateTeaserCalculator);
+
+    // Single badge position change toggle
+    $('#sneakypeak-single-badge-position').on('change', function () {
+      if ($(this).val() === 'custom') {
+        $('#sneakypeak-single-custom-selector-row').show();
+      } else {
+        $('#sneakypeak-single-custom-selector-row').hide();
+      }
+    });
+
+    // Teaser font family toggle
+    $('#sneakypeak-teaser-font-family').on('change', function () {
+      if ($(this).val() === 'custom') {
+        $('#sneakypeak-custom-font-row').show();
+      } else {
+        $('#sneakypeak-custom-font-row').hide();
+      }
+      updateTeaserCalculator();
+    });
+
+    // WordPress Media Uploader for custom font file (.woff2, .woff, .ttf)
+    $('#sneakypeak-upload-font-button').on('click', function (e) {
+      e.preventDefault();
+      var mediaUploader;
+      if (mediaUploader) {
+        mediaUploader.open();
+        return;
+      }
+      mediaUploader = wp.media({
+        title: 'Choose or Upload Font File',
+        button: { text: 'Use this font' },
+        multiple: false
+      });
+
+      mediaUploader.on('select', function () {
+        var attachment = mediaUploader.state().get('selection').first().toJSON();
+        $('#sneakypeak-custom-font-url').val(attachment.url).trigger('change');
+      });
+
+      mediaUploader.open();
+    });
 
     // Initial run
     updateBadgePreview();

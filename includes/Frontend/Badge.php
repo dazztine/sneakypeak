@@ -22,7 +22,9 @@ class Badge {
      * @return string
      */
     public static function render(Campaign $campaign, string $phase, bool $is_single = false): string {
-        $corner = (string) $campaign->get_setting('badge_corner', 'top-right');
+        $corner = $is_single
+            ? (string) $campaign->get_setting('single_badge_corner', 'top-right')
+            : (string) $campaign->get_setting('badge_corner', 'top-right');
         $shape  = (string) $campaign->get_setting('badge_shape', 'ribbon');
         $size   = (string) $campaign->get_setting('badge_size', 'medium');
         $icon   = (string) $campaign->get_setting('badge_icon', 'star');

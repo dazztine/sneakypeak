@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,11 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.2.1 =
+* Teaser Typography Customization: Curated geometric sans Google Fonts (Jost, Montserrat, Poppins, Outfit, Inter, Questrial) matching modern athletic/retail aesthetics (such as Adidas), plus custom font file upload (.woff2, .woff, .ttf) via WordPress Media Uploader and customizable font size.
+* Single Product Badge Placement: Granular placement controls for single product pages with options for Over main gallery image (default), Inside product summary (above title/price), or Custom CSS selector with independent corner anchoring and signed nudges X/Y.
+* Live Designer Admin Preview: Live font loading and preview inside the campaign editor's teaser calculator.
 
 = 1.2.0 =
 * Official Stable Open-Source Release: Codebase cleaned, audit-verified, and prepared for open-source distribution on GitHub with dazztine as author.

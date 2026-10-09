@@ -17,12 +17,17 @@
 
   function createBadgeElement(campaignId, isSingle) {
     var campData = config.campaigns[campaignId];
-    if (!campData || !campData.badgeHtml) {
+    if (!campData) {
+      return null;
+    }
+
+    var html = (isSingle && campData.singleBadgeHtml) ? campData.singleBadgeHtml : campData.badgeHtml;
+    if (!html) {
       return null;
     }
 
     var temp = document.createElement('div');
-    temp.innerHTML = campData.badgeHtml;
+    temp.innerHTML = html;
     var badgeElement = temp.firstElementChild;
     if (!badgeElement) {
       return null;
@@ -107,25 +112,44 @@
       card.appendChild(badgeEl);
     });
 
-    // 2. Single product page main gallery fallback if not already injected via PHP
+    // 2. Single product page badge handling (gallery, summary fallback, or custom CSS selector)
     if (document.body && document.body.classList.contains('sneakypeak-promo-single')) {
-      var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery');
-      if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
-        var singleMatch = document.body.className.match(/sneakypeak-campaign-(\d+)/);
-        var singleCid = singleMatch && singleMatch[1] ? parseInt(singleMatch[1], 10) : 0;
-        if (!singleCid) {
-          var firstKey = Object.keys(config.campaigns)[0];
-          singleCid = firstKey ? parseInt(firstKey, 10) : 0;
-        }
+      var singleMatch = document.body.className.match(/sneakypeak-campaign-(\d+)/);
+      var singleCid = singleMatch && singleMatch[1] ? parseInt(singleMatch[1], 10) : 0;
+      if (!singleCid) {
+        var firstKey = Object.keys(config.campaigns)[0];
+        singleCid = firstKey ? parseInt(firstKey, 10) : 0;
+      }
 
-        if (singleCid && config.campaigns[singleCid]) {
-          var singleBadge = createBadgeElement(singleCid, true);
-          if (singleBadge) {
-            var galComputed = window.getComputedStyle(galleryImage);
-            if (galComputed.position === 'static') {
-              galleryImage.style.position = 'relative';
+      if (singleCid && config.campaigns[singleCid]) {
+        var camp = config.campaigns[singleCid];
+        var pos = camp.singlePosition || 'gallery';
+
+        // Custom selector placement
+        if (pos === 'custom' && camp.singleCustomSelector) {
+          var customTarget = document.querySelector(camp.singleCustomSelector);
+          if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap')) {
+            var customBadge = createBadgeElement(singleCid, true);
+            if (customBadge) {
+              var ctComputed = window.getComputedStyle(customTarget);
+              if (ctComputed.position === 'static') {
+                customTarget.style.position = 'relative';
+              }
+              customTarget.appendChild(customBadge);
             }
-            galleryImage.appendChild(singleBadge);
+          }
+        } else if (pos === 'gallery') {
+          // Main gallery fallback if not already injected via PHP
+          var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery');
+          if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
+            var singleBadge = createBadgeElement(singleCid, true);
+            if (singleBadge) {
+              var galComputed = window.getComputedStyle(galleryImage);
+              if (galComputed.position === 'static') {
+                galleryImage.style.position = 'relative';
+              }
+              galleryImage.appendChild(singleBadge);
+            }
           }
         }
       }

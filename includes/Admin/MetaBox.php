@@ -63,6 +63,7 @@ class MetaBox {
         }
 
         if ($hook === 'post.php' || $hook === 'post-new.php') {
+            wp_enqueue_media();
             wp_enqueue_style('wp-color-picker');
             wp_enqueue_script('wp-color-picker');
             wp_add_inline_script(
@@ -539,6 +540,53 @@ class MetaBox {
                                 <p class="description"><?php esc_html_e('Optional custom CSS injected specifically when this campaign is active.', 'sneakypeak'); ?></p>
                             </td>
                         </tr>
+                        <tr>
+                            <th colspan="2" style="padding-top:16px; border-top:1px dashed #ddd;">
+                                <h4 style="margin:4px 0 0; font-size:13px; text-transform:uppercase; color:#1d2327;"><?php esc_html_e('Single Product View Badge Placement', 'sneakypeak'); ?></h4>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php esc_html_e('Placement Location', 'sneakypeak'); ?></th>
+                            <td>
+                                <select name="sneakypeak[single_badge_position]" id="sneakypeak-single-badge-position">
+                                    <option value="gallery" <?php selected($settings['single_badge_position'] ?? 'gallery', 'gallery'); ?>><?php esc_html_e('Over main gallery image (Default)', 'sneakypeak'); ?></option>
+                                    <option value="summary" <?php selected($settings['single_badge_position'] ?? '', 'summary'); ?>><?php esc_html_e('Inside product summary (above title/price)', 'sneakypeak'); ?></option>
+                                    <option value="custom" <?php selected($settings['single_badge_position'] ?? '', 'custom'); ?>><?php esc_html_e('Custom CSS selector', 'sneakypeak'); ?></option>
+                                </select>
+                                <p class="description"><?php esc_html_e('Choose where the promo badge is anchored on the single product page.', 'sneakypeak'); ?></p>
+                            </td>
+                        </tr>
+                        <tr id="sneakypeak-single-custom-selector-row" style="<?php echo (($settings['single_badge_position'] ?? 'gallery') === 'custom') ? '' : 'display:none;'; ?>">
+                            <th scope="row"><?php esc_html_e('Target CSS Selector', 'sneakypeak'); ?></th>
+                            <td>
+                                <input type="text" name="sneakypeak[single_badge_custom_selector]" value="<?php echo esc_attr($settings['single_badge_custom_selector'] ?? ''); ?>" class="regular-text" placeholder=".product-gallery, .entry-summary, etc." />
+                                <p class="description"><?php esc_html_e('Element selector where the badge will be injected on single product pages.', 'sneakypeak'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php esc_html_e('Single View Corner & Nudge', 'sneakypeak'); ?></th>
+                            <td>
+                                <select name="sneakypeak[single_badge_corner]" style="margin-bottom:8px;">
+                                    <option value="top-right" <?php selected($settings['single_badge_corner'] ?? 'top-right', 'top-right'); ?>><?php esc_html_e('Top Right', 'sneakypeak'); ?></option>
+                                    <option value="top-left" <?php selected($settings['single_badge_corner'] ?? '', 'top-left'); ?>><?php esc_html_e('Top Left', 'sneakypeak'); ?></option>
+                                    <option value="bottom-left" <?php selected($settings['single_badge_corner'] ?? '', 'bottom-left'); ?>><?php esc_html_e('Bottom Left', 'sneakypeak'); ?></option>
+                                    <option value="bottom-right" <?php selected($settings['single_badge_corner'] ?? '', 'bottom-right'); ?>><?php esc_html_e('Bottom Right', 'sneakypeak'); ?></option>
+                                </select>
+                                <br>
+                                <?php list($single_nudge_x, $single_nudge_y) = $campaign->get_single_nudge_offsets(); ?>
+                                <label style="margin-right:16px;">
+                                    <?php esc_html_e('Horizontal (X):', 'sneakypeak'); ?>
+                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_x]" value="<?php echo esc_attr($single_nudge_x); ?>" class="small-text" /> px
+                                </label>
+                                <label>
+                                    <?php esc_html_e('Vertical (Y):', 'sneakypeak'); ?>
+                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_y]" value="<?php echo esc_attr($single_nudge_y); ?>" class="small-text" /> px
+                                </label>
+                                <p class="description" style="margin-top:6px;">
+                                    <?php esc_html_e('Independent fine-tuning nudge for single product view.', 'sneakypeak'); ?>
+                                </p>
+                            </td>
+                        </tr>
                     </table>
                 </div>
 
@@ -606,6 +654,45 @@ class MetaBox {
                     <td>
                         <input type="text" name="sneakypeak[teaser_variable_prefix]" value="<?php echo esc_attr($settings['teaser_variable_prefix'] ?? 'From'); ?>" class="small-text" />
                         <p class="description"><?php esc_html_e('Prepended to variable teaser prices (e.g. "From ₱8,???").', 'sneakypeak'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Teaser Font Style', 'sneakypeak'); ?></th>
+                    <td>
+                        <select name="sneakypeak[teaser_font_family]" id="sneakypeak-teaser-font-family">
+                            <option value="inherit" <?php selected($settings['teaser_font_family'] ?? 'inherit', 'inherit'); ?>><?php esc_html_e('Theme Default (inherit)', 'sneakypeak'); ?></option>
+                            <optgroup label="<?php esc_attr_e('Curated Geometric Sans (Adidas / Modern Retail Style)', 'sneakypeak'); ?>">
+                                <option value="jost" <?php selected($settings['teaser_font_family'] ?? '', 'jost'); ?>>Jost (Geometric Sans / Futura-style)</option>
+                                <option value="montserrat" <?php selected($settings['teaser_font_family'] ?? '', 'montserrat'); ?>>Montserrat (Bold Urban / Retail)</option>
+                                <option value="poppins" <?php selected($settings['teaser_font_family'] ?? '', 'poppins'); ?>>Poppins (Clean Geometric)</option>
+                                <option value="outfit" <?php selected($settings['teaser_font_family'] ?? '', 'outfit'); ?>>Outfit (Contemporary Display)</option>
+                                <option value="inter" <?php selected($settings['teaser_font_family'] ?? '', 'inter'); ?>>Inter (Modern Grotesque)</option>
+                                <option value="questrial" <?php selected($settings['teaser_font_family'] ?? '', 'questrial'); ?>>Questrial (Avant Garde Curves)</option>
+                            </optgroup>
+                            <option value="custom" <?php selected($settings['teaser_font_family'] ?? '', 'custom'); ?>><?php esc_html_e('Upload Custom Font (.woff2, .woff, .ttf)', 'sneakypeak'); ?></option>
+                        </select>
+                        <p class="description"><?php esc_html_e('Custom typography for the teaser sale price and label to match brand aesthetics.', 'sneakypeak'); ?></p>
+                    </td>
+                </tr>
+                <tr id="sneakypeak-custom-font-row" style="<?php echo (($settings['teaser_font_family'] ?? 'inherit') === 'custom') ? '' : 'display:none;'; ?>">
+                    <th scope="row"><?php esc_html_e('Custom Font File', 'sneakypeak'); ?></th>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px; max-width:550px;">
+                            <input type="text" name="sneakypeak[teaser_font_custom_url]" id="sneakypeak-custom-font-url" value="<?php echo esc_url($settings['teaser_font_custom_url'] ?? ''); ?>" class="regular-text" style="flex:1;" placeholder="https://example.com/fonts/myfont.woff2" />
+                            <button type="button" class="button" id="sneakypeak-upload-font-button"><?php esc_html_e('Upload / Choose Font', 'sneakypeak'); ?></button>
+                        </div>
+                        <p class="description"><?php esc_html_e('Upload or select a .woff2, .woff, or .ttf font file from your WordPress Media Library.', 'sneakypeak'); ?></p>
+                        <label style="margin-top:6px; display:inline-block;">
+                            <?php esc_html_e('Custom Font Family Name (optional):', 'sneakypeak'); ?>
+                            <input type="text" name="sneakypeak[teaser_font_custom_name]" value="<?php echo esc_attr($settings['teaser_font_custom_name'] ?? ''); ?>" class="regular-text" placeholder="e.g. MyBrandSans" style="width:200px;" />
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Teaser Font Size', 'sneakypeak'); ?></th>
+                    <td>
+                        <input type="number" min="0" max="60" step="1" name="sneakypeak[teaser_font_size]" value="<?php echo esc_attr($settings['teaser_font_size'] ?? 0); ?>" class="small-text" /> px
+                        <p class="description"><?php esc_html_e('Custom teaser price font size (in px). Set to 0 to use responsive theme defaults.', 'sneakypeak'); ?></p>
                     </td>
                 </tr>
             </table>
@@ -789,11 +876,31 @@ class MetaBox {
 
         $clean['badge_custom_css'] = sanitize_textarea_field($input['badge_custom_css'] ?? '');
 
+        // Single Product Badge Placement
+        $clean['single_badge_position'] = in_array($input['single_badge_position'] ?? '', array('gallery', 'summary', 'custom'), true)
+            ? $input['single_badge_position']
+            : 'gallery';
+        $clean['single_badge_custom_selector'] = sanitize_text_field($input['single_badge_custom_selector'] ?? '');
+        $clean['single_badge_corner'] = in_array($input['single_badge_corner'] ?? '', array('top-right', 'top-left', 'bottom-left', 'bottom-right'), true)
+            ? $input['single_badge_corner']
+            : 'top-right';
+        $clean['single_badge_nudge_x'] = max(-100, min(100, (int) ($input['single_badge_nudge_x'] ?? 0)));
+        $clean['single_badge_nudge_y'] = max(-100, min(100, (int) ($input['single_badge_nudge_y'] ?? 0)));
+
         // Teaser settings
         $clean['mask_rule'] = in_array($input['mask_rule'] ?? '', array('keep_first', 'mask_last_3'), true) ? $input['mask_rule'] : 'keep_first';
         $raw_teaser_label   = isset($input['teaser_label']) ? trim(sanitize_text_field($input['teaser_label'])) : '';
         $clean['teaser_label'] = ($raw_teaser_label !== '') ? $raw_teaser_label : 'Sale Price:';
         $clean['teaser_variable_prefix'] = sanitize_text_field($input['teaser_variable_prefix'] ?? 'From');
+
+        // Font settings
+        $valid_fonts = array('inherit', 'jost', 'montserrat', 'poppins', 'outfit', 'inter', 'questrial', 'custom');
+        $clean['teaser_font_family'] = in_array($input['teaser_font_family'] ?? '', $valid_fonts, true)
+            ? $input['teaser_font_family']
+            : 'inherit';
+        $clean['teaser_font_custom_url']  = esc_url_raw(trim($input['teaser_font_custom_url'] ?? ''));
+        $clean['teaser_font_custom_name'] = sanitize_text_field($input['teaser_font_custom_name'] ?? '');
+        $clean['teaser_font_size']        = max(0, min(60, absint($input['teaser_font_size'] ?? 0)));
 
         update_post_meta($post_id, '_sneakypeak_settings', $clean);
 
