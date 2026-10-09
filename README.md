@@ -1,6 +1,6 @@
 # SneakyPeak — WooCommerce Sneak Peek & Campaign Reveal
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](https://github.com/dazztine/sneakypeak/releases)
 [![WordPress](https://img.shields.io/badge/wordpress-6.2%2B-blue.svg)](https://wordpress.org)
 [![WooCommerce](https://img.shields.io/badge/woocommerce-8.0%2B-purple.svg)](https://woocommerce.com)
 [![PHP](https://img.shields.io/badge/php-7.4%2B-8892BF.svg)](https://php.net)
@@ -142,8 +142,12 @@ Test your campaigns before they go live without modifying database timestamps or
   - Pinned bar displaying current simulated phase, simulated time, and real time with a one-click exit button.
 - **Zero-Risk Checkout Guard**:
   - Blocks accidental orders if the active preview simulates a phase that differs from the store's real-time phase.
-- **Cache Suppression**:
-  - Sends `DONOTCACHEPAGE`, `DONOTCACHEOBJECT`, and `nocache_headers()` so preview pages are never cached by CDNs or page caches.
+- **Cache Suppression & Cache-Safe Preview**:
+  - Sends `DONOTCACHEPAGE`, `DONOTCACHEOBJECT`, `DONOTCACHEDB`, `DONOTROCKETOPTIMIZE`, and `nocache_headers()` so preview pages are never cached.
+  - Automatically appends a unique `sp_v=<timestamp>` query argument upon preview preset/exit redirects to prevent cached page copies from masking live simulations while strictly preserving pagination and filters.
+- **Automatic Cache Purge & Cron Milestones**:
+  - Automatically schedules single WP-Cron events (`sneakypeak_phase_change`) at Teaser, Reveal (Live), and End timestamps.
+  - Purges all detected cache layers (LiteSpeed, WP Rocket, W3 Total Cache, WP Super Cache, SiteGround, Autoptimize, WP Fastest Cache, Redis/Memcached object caches, and WooCommerce transients) throttled safely to once per 60 seconds per reason.
 
 ---
 
@@ -160,6 +164,11 @@ add_filter('sneakypeak_allow_preview_checkout', function(bool $allow): bool {
 // Provide a custom pricing engine by implementing SneakyPeak\Pricing\PriceSource
 add_action('sneakypeak_init', function() {
     \SneakyPeak\Campaigns\Resolver::set_price_source(new MyCustomPriceSource());
+});
+
+// React to automated or manual cache purges
+add_action('sneakypeak_cache_purged', function(string $reason) {
+    // Custom purge or logging logic
 });
 ```
 
@@ -179,7 +188,7 @@ add_action('wp_body_open', Safe::action('my_action_callback'));
 
 ```text
 sneakypeak/
-├── sneakypeak.php              # Plugin entrypoint, HPOS & Blocks declaration (v1.2.0)
+├── sneakypeak.php              # Plugin entrypoint, HPOS & Blocks declaration (v1.3.1)
 ├── readme.txt                  # WordPress.org plugin directory readme
 ├── README.md                   # GitHub documentation & guide
 ├── assets/
@@ -206,7 +215,8 @@ sneakypeak/
 │   │   ├── PriceSource.php     # Interface for price providers
 │   │   └── LegacyPriceSource.php # Default WooCommerce sale price provider
 │   └── Support/
-│       └── Safe.php            # Fail-safe error boundary for hook callbacks
+│       ├── Safe.php            # Fail-safe error boundary for hook callbacks
+│       └── Cache.php           # Multi-engine cache purge & WP-Cron schedule manager
 └── languages/
     └── sneakypeak.pot          # Translation template
 ```

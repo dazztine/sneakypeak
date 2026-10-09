@@ -1154,6 +1154,10 @@ class MetaBox {
 
         // Invalidate target resolution caches
         Resolver::invalidate_caches();
+
+        // Reschedule WP-Cron events and purge cache on campaign save
+        \SneakyPeak\Support\Cache::schedule_campaign_events($post_id);
+        \SneakyPeak\Support\Cache::purge_all('Campaign save', $post_id);
     }
 
     /**
@@ -1395,6 +1399,50 @@ class MetaBox {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+
+        <?php
+        $cron_diag = \SneakyPeak\Support\Cache::get_next_phase_change_diagnostics($campaign);
+        ?>
+        <div class="sneakypeak-panel" style="margin-bottom: 20px; background: #f6f7f7; border: 1px solid #ccd0d4;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#1d2327; margin-bottom:4px;">
+                        <?php esc_html_e('Next Scheduled Phase Change:', 'sneakypeak'); ?>
+                        <?php if ($cron_diag) : ?>
+                            <strong><?php echo esc_html($cron_diag['phase_label']); ?></strong>
+                            <span style="color:#50575e;">(<?php echo esc_html($format_ts($cron_diag['timestamp'])); ?>)</span>
+                            &nbsp;—&nbsp;
+                            <strong><?php esc_html_e('WP-Cron Status:', 'sneakypeak'); ?></strong>
+                            <?php if ($cron_diag['status'] === 'scheduled') : ?>
+                                <span style="background:#46b450; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;"><?php esc_html_e('scheduled', 'sneakypeak'); ?></span>
+                            <?php elseif ($cron_diag['status'] === 'overdue') : ?>
+                                <span style="background:#d63638; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;">
+                                    <?php printf(esc_html__('overdue (%d min)', 'sneakypeak'), (int) ceil($cron_diag['overdue_seconds'] / 60)); ?>
+                                </span>
+                            <?php else : ?>
+                                <span style="background:#dba617; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;"><?php esc_html_e('missing', 'sneakypeak'); ?></span>
+                            <?php endif; ?>
+                        <?php else : ?>
+                            <span style="color:#646970; font-weight:normal;"><?php esc_html_e('None (Draft, disabled, or campaign ended)', 'sneakypeak'); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div style="font-size:11px; color:#646970; line-height:1.4;">
+                        <?php esc_html_e('Phase changes use WP-Cron. For exact timing, add a server cron that calls wp-cron.php every minute, and set define(\'DISABLE_WP_CRON\', true);.', 'sneakypeak'); ?>
+                    </div>
+                </div>
+                <div>
+                    <form method="post" action="" style="margin:0; display:inline-block;">
+                        <input type="hidden" name="sneakypeak_action" value="purge_cache_now" />
+                        <input type="hidden" name="campaign_id" value="<?php echo (int) $post->ID; ?>" />
+                        <?php wp_nonce_field(\SneakyPeak\Support\Cache::PURGE_NONCE_ACTION, \SneakyPeak\Support\Cache::PURGE_NONCE_NAME); ?>
+                        <button type="submit" class="button button-secondary" style="display:inline-flex; align-items:center; gap:5px;">
+                            <span class="dashicons dashicons-update" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span>
+                            <?php esc_html_e('Purge Cache Now', 'sneakypeak'); ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         <div class="sneakypeak-insights-grid">
             

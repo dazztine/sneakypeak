@@ -96,6 +96,9 @@ class Preview {
         if (!defined('DONOTCACHEDB')) {
             define('DONOTCACHEDB', true);
         }
+        if (!defined('DONOTROCKETOPTIMIZE')) {
+            define('DONOTROCKETOPTIMIZE', true);
+        }
 
         if (function_exists('nocache_headers')) {
             nocache_headers();
@@ -105,6 +108,13 @@ class Preview {
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private');
             header('Pragma: no-cache');
             header('Expires: Wed, 11 Jan 1984 05:00:00 GMT');
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+
+        if (function_exists('do_action')) {
+            try {
+                do_action('litespeed_control_set_nocache', 'sneakypeak preview');
+            } catch (\Throwable $e) {}
         }
     }
 
@@ -226,6 +236,7 @@ class Preview {
         self::$current_session = null;
         self::$checked_session = true;
         \SneakyPeak\Campaigns\Resolver::invalidate_caches();
+        \SneakyPeak\Support\Cache::purge_all('Preview exit');
     }
 
     /**
@@ -322,11 +333,16 @@ class Preview {
             }
         }
 
-        // Clean any residual preview action parameters from the final target URL
+        // Clean any residual preview action parameters from the final target URL (sp_v is not stripped)
         $target = remove_query_arg(array('sneakypeak_action', 'phase', 'campaign_id', '_wpnonce', 'preview_datetime'), $target);
 
+        // Add sp_v=<current timestamp> so it's a new URL the cache has never seen
+        $target = add_query_arg('sp_v', time(), $target);
+
         wp_safe_redirect($target);
-        exit;
+        if (!defined('SNEAKYPEAK_TESTING')) {
+            exit;
+        }
     }
 
     /**
@@ -509,6 +525,9 @@ class Preview {
             if (!empty($current_url)) {
                 $exit_args['redirect_to'] = $current_url;
             }
+            // Add sp_v to admin bar links when preview session is active
+            $exit_args['sp_v'] = time();
+
             $exit_url = wp_nonce_url(
                 add_query_arg($exit_args),
                 'sneakypeak_exit_preview'
@@ -604,6 +623,9 @@ class Preview {
                 if (!empty($current_url)) {
                     $link_args['redirect_to'] = $current_url;
                 }
+                if ($is_active) {
+                    $link_args['sp_v'] = time();
+                }
                 $url = wp_nonce_url(
                     add_query_arg($link_args),
                     'sneakypeak_set_preview'
@@ -631,6 +653,16 @@ class Preview {
             'title'  => '⏱ ' . __('Custom Date / Time…', 'sneakypeak'),
             'href'   => '#sneakypeak-custom-time-modal',
             'meta'   => array('onclick' => 'sneakypeakOpenCustomModal(); return false;'),
+        ));
+
+        // Note about caching in preview menu
+        $admin_bar->add_node(array(
+            'id'     => 'sneakypeak_preview_cache_note',
+            'parent' => 'sneakypeak_preview',
+            'title'  => '<div style="font-size:11px; line-height:1.4; color:#a0a5aa; max-width:280px; padding:6px 2px; white-space:normal;">' .
+                        esc_html__('If the page doesn’t change, your cache may be serving a stored copy. Add sneakypeak_preview_session to your cache plugin’s ‘do not cache when cookie’ list.', 'sneakypeak') .
+                        '</div>',
+            'href'   => false,
         ));
     }
 

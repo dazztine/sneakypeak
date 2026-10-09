@@ -9,6 +9,7 @@ use SneakyPeak\Pricing\LegacyPriceSource;
 use SneakyPeak\Frontend\Controller;
 use SneakyPeak\Admin\MetaBox;
 use SneakyPeak\Migration\Importer;
+use SneakyPeak\Support\Cache;
 
 /**
  * Class Plugin
@@ -39,6 +40,9 @@ class Plugin {
 
         // 1. Initialize Preview Subsystem (time travel, cookies, admin bar)
         Preview::init();
+
+        // 2. Initialize Cache Subsystem (purging, WP-Cron schedules, diagnostics)
+        Cache::init();
 
         // 2. Wire pricing source to resolver
         $price_source = new LegacyPriceSource();

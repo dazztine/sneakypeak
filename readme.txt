@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,15 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.1 =
+* Cache-Safe Preview: Added `sp_v` cache-busting timestamp parameter to all preview action redirects (presets, custom date, exit) to bypass stored page cache copies while strictly preserving query strings and pagination.
+* Preview Header Signals: Enforced early cache suppression headers on `send_headers` (priority 1) with `Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private`, `X-LiteSpeed-Cache-Control: no-cache`, `litespeed_control_set_nocache` action, and constants `DONOTCACHEPAGE`, `DONOTCACHEOBJECT`, `DONOTCACHEDB`, and `DONOTROCKETOPTIMIZE`.
+* Preview Admin-Bar Guidance: Added helpful cache diagnostic note in admin-bar preview menu instructing admins to whitelist `sneakypeak_preview_session` cookie if page cache plugins serve stored copies.
+* Automatic Phase Purge: Added single WP-Cron events scheduled at Teaser start, Reveal (Live) start, and End timestamps (`sneakypeak_phase_change`), automatically purging caches across LiteSpeed, WP Rocket, W3 Total Cache, WP Super Cache, SiteGround Optimizer, Autoptimize, WP Fastest Cache, WordPress object cache, and WooCommerce transients.
+* Cron Rescheduling & Reconciliation: Events are automatically scheduled/rescheduled on campaign save, status transition, untrash, and reconciled on `admin_init`; and cleanly unscheduled on trash or delete.
+* Purge Throttling & Logging: Purges are throttled to at most once per 60 seconds per reason to safeguard server resources, and logged via `error_log` when `WP_DEBUG` is active.
+* Campaign Editor Diagnostics & Manual Purge: Added WP-Cron reliability notice, live display of next scheduled phase change time and cron status (`scheduled`, `overdue`, or `missing`), overdue admin warning notices (> 2 minutes), and a nonced "Purge Cache Now" button.
 
 = 1.3.0 =
 * Live Phase Price Enforcement: Added complete Live phase enforcement path across all WooCommerce price filters (`woocommerce_product_get_price`, `woocommerce_product_variation_get_price`, `woocommerce_product_get_sale_price`, `woocommerce_product_variation_get_sale_price`, `woocommerce_product_is_on_sale`, `woocommerce_variation_prices_price`, `woocommerce_variation_prices_sale_price`, `woocommerce_available_variation`, structured data, and Store API).

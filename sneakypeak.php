@@ -3,7 +3,7 @@
  * Plugin Name: SneakyPeak — WooCommerce Sneak Peek & Campaign Reveal
  * Plugin URI:  https://github.com/dazztine/sneakypeak
  * Description: Generalized WooCommerce sneak peek campaigns: custom badges, masked teaser prices, early-sale price guards, and scheduled reveal phases.
- * Version:     1.3.0
+ * Version:     1.3.1
  * Author:      dazztine
  * Author URI:  https://github.com/dazztine
  * Text Domain: sneakypeak
@@ -15,7 +15,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SNEAKYPEAK_VERSION', '1.3.0');
+define('SNEAKYPEAK_VERSION', '1.3.1');
 define('SNEAKYPEAK_PLUGIN_FILE', __FILE__);
 define('SNEAKYPEAK_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SNEAKYPEAK_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -83,11 +83,23 @@ register_activation_hook(__FILE__, function () {
     if (class_exists('SneakyPeak\\Migration\\Importer')) {
         \SneakyPeak\Migration\Importer::check_and_migrate();
     }
+
+    // Purge cache and reconcile cron events on activation
+    if (class_exists('SneakyPeak\\Support\\Cache')) {
+        \SneakyPeak\Support\Cache::purge_all('Plugin activation');
+        \SneakyPeak\Support\Cache::reconcile_all_campaign_events();
+    }
 });
 
 /**
  * Deactivation Hook
  */
 register_deactivation_hook(__FILE__, function () {
+    // Clear cron events and purge cache on deactivation
+    if (class_exists('SneakyPeak\\Support\\Cache')) {
+        \SneakyPeak\Support\Cache::clear_all_cron_events();
+        \SneakyPeak\Support\Cache::purge_all('Plugin deactivation');
+    }
+
     flush_rewrite_rules();
 });
