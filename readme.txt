@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,12 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.2 =
+* Card Selector Refinement: Replaced bare `article` in candidate card selectors with scoped `article.product` and `article.type-product`, preventing badges from inadvertently targeting page/search root articles.
+* Candidate Card Sanity Checks: Added content and size validation rejecting candidate cards that contain multiple anchors or multiple product items, with fallback to the closest ancestor containing exactly one product image.
+* Single-Result Oversized Card Alignment: Detected full-width and oversized catalog cards (> 1.25x image width) in single search results, automatically positioning the badge from the image boundary rather than the far card edge while preserving corner choices, X/Y nudges, and image markup.
+* Responsive Card Measurement: Added debounced resize and load listeners to dynamically measure and reposition badges across viewport changes and image load completions.
 
 = 1.3.1 =
 * Cache-Safe Preview: Added `sp_v` cache-busting timestamp parameter to all preview action redirects (presets, custom date, exit) to bypass stored page cache copies while strictly preserving query strings and pagination.

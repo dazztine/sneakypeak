@@ -10,8 +10,11 @@
 .woocommerce-page ul.products li.product,
 ul.products li.product,
 .wc-block-grid__product,
+.wc-block-product-template__item,
 .wp-block-woocommerce-all-products .wc-block-product,
-.products .product {
+.products .product,
+.product-card,
+.product-item {
     position: relative;
 }
 
