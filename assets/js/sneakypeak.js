@@ -74,6 +74,27 @@
     }
   }
 
+  function getVisualCard(card, badgeEl) {
+    if (!card) {
+      return null;
+    }
+    var img = card.querySelector('img, picture');
+    if (!img) {
+      return card;
+    }
+
+    var titleOrPriceSelector = '.woocommerce-loop-product__title, .product-title, h2, h3, .price, .woocommerce-Price-amount';
+    var curr = img.parentElement;
+    while (curr && curr !== card && card.contains(curr)) {
+      if (curr.contains(img) && curr.querySelector(titleOrPriceSelector)) {
+        return curr;
+      }
+      curr = curr.parentElement;
+    }
+
+    return card;
+  }
+
   function adjustCardBadgePosition(card, badgeEl) {
     if (!card || !badgeEl || badgeEl.classList.contains('sneakypeak-badge-single-wrap')) {
       return;
@@ -83,57 +104,109 @@
     var campData = config.campaigns[campaignId];
     var badgeAnchor = (campData && campData.badgeAnchor)
       ? campData.badgeAnchor
-      : (badgeEl.getAttribute('data-badge-anchor') || 'card');
+      : (badgeEl.getAttribute('data-badge-anchor') || 'auto');
 
-    // Card edge (default): no JS re-anchoring at all, badge stays flush to card edge
-    if (badgeAnchor !== 'image') {
+    // 1. Card edge (strict): never re-anchor, badge stays flush to card edge
+    if (badgeAnchor === 'card') {
       badgeEl.style.removeProperty('left');
       badgeEl.style.removeProperty('right');
+      badgeEl.style.removeProperty('top');
+      badgeEl.style.removeProperty('bottom');
       applyTransformFallback(badgeEl, campData);
       return;
     }
 
-    var img = card.querySelector('img, picture');
-    if (!img) {
-      badgeEl.style.removeProperty('left');
-      badgeEl.style.removeProperty('right');
-      applyTransformFallback(badgeEl, campData);
-      return;
-    }
+    // 2. Auto (recommended): anchor to the visual card if the matched card is stretched
+    if (badgeAnchor === 'auto') {
+      var visualCard = getVisualCard(card, badgeEl);
+      var cardRect = card.getBoundingClientRect();
+      var visualRect = visualCard ? visualCard.getBoundingClientRect() : cardRect;
 
-    var cardRect = card.getBoundingClientRect();
-    var imgRect = img.getBoundingClientRect();
-
-    // Only re-anchor when cardRect.width > 1.75 * imgRect.width
-    // AND the image is horizontally centred or left-aligned inside the card (single stretched search-result case).
-    // Normal grid cards must never be re-anchored.
-    if (imgRect.width > 0 && cardRect.width > 1.75 * imgRect.width) {
-      var leftGap = imgRect.left - cardRect.left;
-      var rightGap = cardRect.right - imgRect.right;
-      var isLeftAligned = leftGap <= Math.max(60, rightGap * 0.5);
-      var isCentred = Math.abs(leftGap - rightGap) <= (cardRect.width * 0.25);
-
-      if (isLeftAligned || isCentred) {
+      // If cardRect.width > 1.25 * visualRect.width (matched card is much wider than the visible card)
+      if (visualRect.width > 0 && cardRect.width > 1.25 * visualRect.width) {
         var isRight = badgeEl.classList.contains('sneakypeak-corner-top-right') ||
                       badgeEl.classList.contains('sneakypeak-corner-bottom-right') ||
                       (!badgeEl.classList.contains('sneakypeak-corner-top-left') && !badgeEl.classList.contains('sneakypeak-corner-bottom-left'));
 
+        var isBottom = badgeEl.classList.contains('sneakypeak-corner-bottom-right') ||
+                       badgeEl.classList.contains('sneakypeak-corner-bottom-left');
+
         if (isRight) {
-          var rightOffset = Math.round(cardRect.right - imgRect.right);
+          var rightOffset = Math.round(cardRect.right - visualRect.right);
           badgeEl.style.setProperty('right', rightOffset + 'px', 'important');
           badgeEl.style.setProperty('left', 'auto', 'important');
         } else {
-          var leftOffset = Math.round(imgRect.left - cardRect.left);
+          var leftOffset = Math.round(visualRect.left - cardRect.left);
           badgeEl.style.setProperty('left', leftOffset + 'px', 'important');
           badgeEl.style.setProperty('right', 'auto', 'important');
+        }
+
+        if (isBottom) {
+          var bottomOffset = Math.round(cardRect.bottom - visualRect.bottom);
+          badgeEl.style.setProperty('bottom', bottomOffset + 'px', 'important');
+          badgeEl.style.setProperty('top', 'auto', 'important');
+        } else {
+          var topOffset = Math.round(visualRect.top - cardRect.top);
+          badgeEl.style.setProperty('top', topOffset + 'px', 'important');
+          badgeEl.style.setProperty('bottom', 'auto', 'important');
+        }
+      } else {
+        badgeEl.style.removeProperty('left');
+        badgeEl.style.removeProperty('right');
+        badgeEl.style.removeProperty('top');
+        badgeEl.style.removeProperty('bottom');
+      }
+
+      applyTransformFallback(badgeEl, campData);
+      return;
+    }
+
+    // 3. Image edge: anchor to the main img / picture element
+    if (badgeAnchor === 'image') {
+      var img = card.querySelector('img, picture');
+      if (!img) {
+        badgeEl.style.removeProperty('left');
+        badgeEl.style.removeProperty('right');
+        badgeEl.style.removeProperty('top');
+        badgeEl.style.removeProperty('bottom');
+        applyTransformFallback(badgeEl, campData);
+        return;
+      }
+
+      var cardRectImg = card.getBoundingClientRect();
+      var imgRect = img.getBoundingClientRect();
+
+      if (imgRect.width > 0 && cardRectImg.width > 1.75 * imgRect.width) {
+        var leftGap = imgRect.left - cardRectImg.left;
+        var rightGap = cardRectImg.right - imgRect.right;
+        var isLeftAligned = leftGap <= Math.max(60, rightGap * 0.5);
+        var isCentred = Math.abs(leftGap - rightGap) <= (cardRectImg.width * 0.25);
+
+        if (isLeftAligned || isCentred) {
+          var isRightImg = badgeEl.classList.contains('sneakypeak-corner-top-right') ||
+                           badgeEl.classList.contains('sneakypeak-corner-bottom-right') ||
+                           (!badgeEl.classList.contains('sneakypeak-corner-top-left') && !badgeEl.classList.contains('sneakypeak-corner-bottom-left'));
+
+          if (isRightImg) {
+            var rightOffsetImg = Math.round(cardRectImg.right - imgRect.right);
+            badgeEl.style.setProperty('right', rightOffsetImg + 'px', 'important');
+            badgeEl.style.setProperty('left', 'auto', 'important');
+          } else {
+            var leftOffsetImg = Math.round(imgRect.left - cardRectImg.left);
+            badgeEl.style.setProperty('left', leftOffsetImg + 'px', 'important');
+            badgeEl.style.setProperty('right', 'auto', 'important');
+          }
+        } else {
+          badgeEl.style.removeProperty('left');
+          badgeEl.style.removeProperty('right');
         }
       } else {
         badgeEl.style.removeProperty('left');
         badgeEl.style.removeProperty('right');
       }
-    } else {
-      badgeEl.style.removeProperty('left');
-      badgeEl.style.removeProperty('right');
+
+      applyTransformFallback(badgeEl, campData);
+      return;
     }
 
     applyTransformFallback(badgeEl, campData);
@@ -262,6 +335,14 @@
 
       // Handle card wider than its content (e.g. single-result case)
       adjustCardBadgePosition(card, badgeEl);
+
+      // Re-run after card image finishes loading if not already complete
+      var cardImg = card.querySelector('img');
+      if (cardImg && !cardImg.complete) {
+        cardImg.addEventListener('load', function () {
+          adjustCardBadgePosition(card, badgeEl);
+        }, { once: true });
+      }
     });
 
     // 2. Single product page badge handling (gallery, summary, or custom CSS selector)

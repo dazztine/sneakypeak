@@ -61,7 +61,7 @@ class Campaign {
             'exclude_products'       => array(),
             'exclude_categories'     => array(),
             // Badge Settings
-            'badge_anchor'           => 'card',      // card (Card edge default), image (Image edge)
+            'badge_anchor'           => 'auto',      // auto (Visual card Auto default), card (Card edge strict), image (Image edge)
             'badge_corner'           => 'top-right', // top-right, top-left, bottom-left, bottom-right
             'badge_nudge_x'          => 0,           // -200 to 200 px (positive = right, negative = left)
             'badge_nudge_y'          => 0,           // -200 to 200 px (positive = down, negative = up)

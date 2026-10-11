@@ -116,7 +116,7 @@
                (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
       }).addClass('sneakypeak-badge-shape-' + shape + ' sneakypeak-badge-size-' + size);
 
-      var badgeAnchor = $('select[name="sneakypeak[badge_anchor]"]').val() || 'card';
+      var badgeAnchor = $('select[name="sneakypeak[badge_anchor]"]').val() || 'auto';
 
       var shopWrapCss = {
         top: 'auto',

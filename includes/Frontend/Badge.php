@@ -63,7 +63,7 @@ class Badge {
             $icon_html = '<span class="sneakypeak-badge-icon sneakypeak-icon-tag" aria-hidden="true">&#127991;</span> ';
         }
 
-        $badge_anchor = (string) $campaign->get_setting('badge_anchor', 'card');
+        $badge_anchor = (string) $campaign->get_setting('badge_anchor', 'auto');
         list($nudge_x, $nudge_y) = $is_single ? $campaign->get_single_nudge_offsets() : $campaign->get_nudge_offsets();
 
         return sprintf(

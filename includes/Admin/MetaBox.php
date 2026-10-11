@@ -617,11 +617,12 @@ class MetaBox {
                             <th scope="row"><?php esc_html_e('Badge anchor', 'sneakypeak'); ?></th>
                             <td>
                                 <select name="sneakypeak[badge_anchor]" id="sneakypeak_badge_anchor">
-                                    <option value="card" <?php selected($settings['badge_anchor'] ?? 'card', 'card'); ?>><?php esc_html_e('Card edge (default)', 'sneakypeak'); ?></option>
-                                    <option value="image" <?php selected($settings['badge_anchor'] ?? 'card', 'image'); ?>><?php esc_html_e('Image edge', 'sneakypeak'); ?></option>
+                                    <option value="auto" <?php selected($settings['badge_anchor'] ?? 'auto', 'auto'); ?>><?php esc_html_e('Auto (recommended)', 'sneakypeak'); ?></option>
+                                    <option value="card" <?php selected($settings['badge_anchor'] ?? 'auto', 'card'); ?>><?php esc_html_e('Card edge (strict)', 'sneakypeak'); ?></option>
+                                    <option value="image" <?php selected($settings['badge_anchor'] ?? 'auto', 'image'); ?>><?php esc_html_e('Image edge', 'sneakypeak'); ?></option>
                                 </select>
                                 <p class="description" style="margin-top:6px;">
-                                    <?php esc_html_e('Card edge anchors the badge to the card boundary (no JS re-anchoring). Image edge dynamically re-anchors to the image on single stretched search results.', 'sneakypeak'); ?>
+                                    <?php esc_html_e('Auto anchors to the visual card (inner content container) when the outer card is stretched. Card edge (strict) never re-anchors. Image edge anchors to the image.', 'sneakypeak'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -1113,9 +1114,9 @@ class MetaBox {
             ? $input['badge_icon']
             : 'star';
 
-        $clean['badge_anchor'] = in_array($input['badge_anchor'] ?? '', array('card', 'image'), true)
+        $clean['badge_anchor'] = in_array($input['badge_anchor'] ?? '', array('auto', 'card', 'image'), true)
             ? $input['badge_anchor']
-            : 'card';
+            : 'auto';
 
         $clean['badge_font_size'] = min(24, max(9, absint($input['badge_font_size'] ?? 12)));
         $clean['badge_nudge_x']   = max(-200, min(200, (int) ($input['badge_nudge_x'] ?? 0)));

@@ -138,7 +138,7 @@ class Controller {
                 'singleBadgeHtml'      => Badge::render($camp, $phase, true),
                 'singlePosition'       => (string) $camp->get_setting('single_badge_position', 'gallery'),
                 'singleCustomSelector' => (string) $camp->get_setting('single_badge_custom_selector', ''),
-                'badgeAnchor'          => (string) $camp->get_setting('badge_anchor', 'card'),
+                'badgeAnchor'          => (string) $camp->get_setting('badge_anchor', 'auto'),
                 'nudgeX'               => (int) $nudge_x,
                 'nudgeY'               => (int) $nudge_y,
             );

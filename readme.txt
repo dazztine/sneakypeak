@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.4
+Stable tag: 1.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,11 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.5 =
+* Visual Card Auto Anchoring: Implemented `getVisualCard` to traverse from the card image upward toward the matched card, locating the lowest content ancestor containing both the image and a title/price element (`.woocommerce-loop-product__title`, `.product-title`, `h2`, `h3`, `.price`, `.woocommerce-Price-amount`).
+* Tri-State Badge Anchor Modes: Added "Auto (recommended)", "Card edge (strict)", and "Image edge" options. In Auto mode, badges dynamically align against the visual card bounds when the outer card is stretched (> 1.25x visual card width, e.g. single search result) while staying flush to the card edge on normal grids.
+* Layout Event Listeners: Re-runs badge positioning on window load, debounced window resize, and image load completions so offsets settle accurately.
 
 = 1.3.4 =
 * Critical Save Fix: Removed nested `<form>` tag around the "Purge Cache Now" button in the Live Preview & Insights metabox. In HTML, nested forms are invalid and cause browsers to merge inner form inputs into the main campaign post form, triggering premature cache purge redirections on campaign save and preventing updates from saving.
