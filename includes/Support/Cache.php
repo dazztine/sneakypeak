@@ -39,7 +39,7 @@ class Cache {
 
         // Diagnostics notices & manual purge handler
         add_action('admin_notices', array(__CLASS__, 'display_admin_notices'));
-        add_action('admin_init', array(__CLASS__, 'handle_manual_purge_request'));
+        add_action('admin_post_sneakypeak_purge_cache_now', array(__CLASS__, 'handle_manual_purge_request'));
     }
 
     /**
@@ -524,32 +524,44 @@ class Cache {
     }
 
     /**
-     * Handle "Purge Cache Now" button submission from campaign edit screen.
+     * Handle "Purge Cache Now" button submission from campaign edit screen via admin-post.php.
      */
-    public static function handle_manual_purge_request(): void {
-        if (!isset($_POST['sneakypeak_action']) || $_POST['sneakypeak_action'] !== 'purge_cache_now') {
-            return;
-        }
+     public static function handle_manual_purge_request(): void {
+         // Ignore any request from editpost or missing action
+         if (isset($_POST['action']) && $_POST['action'] === 'editpost') {
+             return;
+         }
 
-        if (!current_user_can('manage_woocommerce')) {
-            return;
-        }
+         $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+         if ($action !== 'sneakypeak_purge_cache_now') {
+             return;
+         }
 
-        check_admin_referer(self::PURGE_NONCE_ACTION, self::PURGE_NONCE_NAME);
+         if (!current_user_can('manage_woocommerce')) {
+             wp_die(esc_html__('You do not have permission to perform this action.', 'sneakypeak'), 403);
+         }
 
-        $campaign_id = isset($_POST['campaign_id']) ? absint($_POST['campaign_id']) : 0;
+         check_admin_referer(self::PURGE_NONCE_ACTION);
 
-        // Force purge bypassing throttle for explicit manual action
-        self::reset_throttle('Manual admin purge');
-        self::purge_all('Manual admin purge', $campaign_id > 0 ? $campaign_id : null);
+         $campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
 
-        $redirect_to = wp_get_referer();
-        if (!$redirect_to) {
-            $redirect_to = admin_url('edit.php?post_type=sneakypeak_campaign');
-        }
+         // Force purge bypassing throttle for explicit manual action
+         self::reset_throttle('Manual admin purge');
+         self::purge_all('Manual admin purge', $campaign_id > 0 ? $campaign_id : null);
 
-        $redirect_to = add_query_arg('sneakypeak_cache_purged', '1', $redirect_to);
-        wp_safe_redirect($redirect_to);
-        exit;
-    }
+         $redirect_to = wp_get_referer();
+         if (!$redirect_to) {
+             $redirect_to = $campaign_id > 0
+                 ? get_edit_post_link($campaign_id, 'raw')
+                 : admin_url('edit.php?post_type=sneakypeak_campaign');
+         }
+
+         if (!$redirect_to) {
+             $redirect_to = admin_url('edit.php?post_type=sneakypeak_campaign');
+         }
+
+         $redirect_to = add_query_arg('sneakypeak_cache_purged', '1', $redirect_to);
+         wp_safe_redirect($redirect_to);
+         exit;
+     }
 }

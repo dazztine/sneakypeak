@@ -936,6 +936,16 @@ class MetaBox {
 
     public static function save_meta(int $post_id, \WP_Post $post): void {
         if (!isset($_POST[self::NONCE_NAME]) || !wp_verify_nonce($_POST[self::NONCE_NAME], self::NONCE_ACTION)) {
+            error_log('[SneakyPeak] Security check failed: invalid or missing nonce on save_meta for post ID ' . $post_id);
+            $user_id = get_current_user_id();
+            if ($user_id > 0) {
+                set_transient('sneakypeak_notices_' . $user_id . '_' . $post_id, array(
+                    array(
+                        'type'    => 'error',
+                        'message' => __('SneakyPeak: settings were not saved (security check failed).', 'sneakypeak'),
+                    ),
+                ), 60);
+            }
             return;
         }
 
@@ -944,6 +954,16 @@ class MetaBox {
         }
 
         if (!current_user_can('manage_woocommerce', $post_id)) {
+            error_log('[SneakyPeak] Security check failed: current user lacks manage_woocommerce capability on save_meta for post ID ' . $post_id);
+            $user_id = get_current_user_id();
+            if ($user_id > 0) {
+                set_transient('sneakypeak_notices_' . $user_id . '_' . $post_id, array(
+                    array(
+                        'type'    => 'error',
+                        'message' => __('SneakyPeak: settings were not saved (security check failed).', 'sneakypeak'),
+                    ),
+                ), 60);
+            }
             return;
         }
 
@@ -1447,15 +1467,16 @@ class MetaBox {
                     </div>
                 </div>
                 <div>
-                    <form method="post" action="" style="margin:0; display:inline-block;">
-                        <input type="hidden" name="sneakypeak_action" value="purge_cache_now" />
-                        <input type="hidden" name="campaign_id" value="<?php echo (int) $post->ID; ?>" />
-                        <?php wp_nonce_field(\SneakyPeak\Support\Cache::PURGE_NONCE_ACTION, \SneakyPeak\Support\Cache::PURGE_NONCE_NAME); ?>
-                        <button type="submit" class="button button-secondary" style="display:inline-flex; align-items:center; gap:5px;">
-                            <span class="dashicons dashicons-update" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span>
-                            <?php esc_html_e('Purge Cache Now', 'sneakypeak'); ?>
-                        </button>
-                    </form>
+                    <?php
+                    $purge_url = wp_nonce_url(
+                        admin_url('admin-post.php?action=sneakypeak_purge_cache_now&campaign_id=' . (int) $post->ID),
+                        \SneakyPeak\Support\Cache::PURGE_NONCE_ACTION
+                    );
+                    ?>
+                    <a href="<?php echo esc_url($purge_url); ?>" class="button button-secondary" style="display:inline-flex; align-items:center; gap:5px;">
+                        <span class="dashicons dashicons-update" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span>
+                        <?php esc_html_e('Purge Cache Now', 'sneakypeak'); ?>
+                    </a>
                 </div>
             </div>
         </div>
