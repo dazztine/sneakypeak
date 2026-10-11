@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,68 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.5 =
+* Visual Card Auto Anchoring: Implemented `getVisualCard` to traverse from the card image upward toward the matched card, locating the lowest content ancestor containing both the image and a title/price element (`.woocommerce-loop-product__title`, `.product-title`, `h2`, `h3`, `.price`, `.woocommerce-Price-amount`).
+* Tri-State Badge Anchor Modes: Added "Auto (recommended)", "Card edge (strict)", and "Image edge" options. In Auto mode, badges dynamically align against the visual card bounds when the outer card is stretched (> 1.25x visual card width, e.g. single search result) while staying flush to the card edge on normal grids.
+* Layout Event Listeners: Re-runs badge positioning on window load, debounced window resize, and image load completions so offsets settle accurately.
+
+= 1.3.4 =
+* Critical Save Fix: Removed nested `<form>` tag around the "Purge Cache Now" button in the Live Preview & Insights metabox. In HTML, nested forms are invalid and cause browsers to merge inner form inputs into the main campaign post form, triggering premature cache purge redirections on campaign save and preventing updates from saving.
+* Admin-Post Cache Purge: Migrated manual cache purge action to a dedicated `admin-post.php?action=sneakypeak_purge_cache_now` link with nonce and capability verification (`manage_woocommerce`), decoupling it completely from `admin_init` and edit form posts.
+* Defensive Save Protection: Added diagnostic logging and admin notices ("SneakyPeak: settings were not saved (security check failed)") when security checks or capability verification fail during campaign save.
+
+= 1.3.3 =
+* Badge Anchor Setting: Added "Badge anchor" setting with options "Card edge (default)" and "Image edge". Card edge mode preserves native corner styling with zero JS repositioning, while Image edge dynamically aligns badges to image bounds on oversized stretched cards.
+* Oversized Threshold Adjustment: Raised oversized card re-anchoring threshold to > 1.75x image width with horizontal centering / left-alignment validation, preventing normal padded grid cards from premature re-anchoring.
+* Position Nudge Protection & Fallback: Added `will-change: transform` and automatic fallback applying nudges via `margin-left`/`margin-top` when themes override CSS transform to `none`.
+* Expanded Nudge Range: Increased position nudge slider/input boundaries from +/-100px to +/-200px for both shop catalog cards and single product views.
+* Cleanup: Removed redundant Google font weight definitions from inline CSS generation.
+
+= 1.3.2 =
+* Card Selector Refinement: Replaced bare `article` in candidate card selectors with scoped `article.product` and `article.type-product`, preventing badges from inadvertently targeting page/search root articles.
+* Candidate Card Sanity Checks: Added content and size validation rejecting candidate cards that contain multiple anchors or multiple product items, with fallback to the closest ancestor containing exactly one product image.
+* Single-Result Oversized Card Alignment: Detected full-width and oversized catalog cards (> 1.25x image width) in single search results, automatically positioning the badge from the image boundary rather than the far card edge while preserving corner choices, X/Y nudges, and image markup.
+* Responsive Card Measurement: Added debounced resize and load listeners to dynamically measure and reposition badges across viewport changes and image load completions.
+
+= 1.3.1 =
+* Cache-Safe Preview: Added `sp_v` cache-busting timestamp parameter to all preview action redirects (presets, custom date, exit) to bypass stored page cache copies while strictly preserving query strings and pagination.
+* Preview Header Signals: Enforced early cache suppression headers on `send_headers` (priority 1) with `Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private`, `X-LiteSpeed-Cache-Control: no-cache`, `litespeed_control_set_nocache` action, and constants `DONOTCACHEPAGE`, `DONOTCACHEOBJECT`, `DONOTCACHEDB`, and `DONOTROCKETOPTIMIZE`.
+* Preview Admin-Bar Guidance: Added helpful cache diagnostic note in admin-bar preview menu instructing admins to whitelist `sneakypeak_preview_session` cookie if page cache plugins serve stored copies.
+* Automatic Phase Purge: Added single WP-Cron events scheduled at Teaser start, Reveal (Live) start, and End timestamps (`sneakypeak_phase_change`), automatically purging caches across LiteSpeed, WP Rocket, W3 Total Cache, WP Super Cache, SiteGround Optimizer, Autoptimize, WP Fastest Cache, WordPress object cache, and WooCommerce transients.
+* Cron Rescheduling & Reconciliation: Events are automatically scheduled/rescheduled on campaign save, status transition, untrash, and reconciled on `admin_init`; and cleanly unscheduled on trash or delete.
+* Purge Throttling & Logging: Purges are throttled to at most once per 60 seconds per reason to safeguard server resources, and logged via `error_log` when `WP_DEBUG` is active.
+* Campaign Editor Diagnostics & Manual Purge: Added WP-Cron reliability notice, live display of next scheduled phase change time and cron status (`scheduled`, `overdue`, or `missing`), overdue admin warning notices (> 2 minutes), and a nonced "Purge Cache Now" button.
+
+= 1.3.0 =
+* Live Phase Price Enforcement: Added complete Live phase enforcement path across all WooCommerce price filters (`woocommerce_product_get_price`, `woocommerce_product_variation_get_price`, `woocommerce_product_get_sale_price`, `woocommerce_product_variation_get_sale_price`, `woocommerce_product_is_on_sale`, `woocommerce_variation_prices_price`, `woocommerce_variation_prices_sale_price`, `woocommerce_available_variation`, structured data, and Store API).
+* Independent Sale Timing: SneakyPeak now directly takes over timing during Live phase, ensuring sale prices display and charge correctly even when native WooCommerce sale schedule dates are blank or not yet started.
+* Variable Product Live Pricing: Formatted variable products to display "From" the lowest campaign sale price with struck-through regular price, while each variation enforces its own distinct sale price in dropdowns and cart.
+* Variation Price Partitioning: Added Live campaign marker to `woocommerce_variation_prices_hash` preventing price cache leaks across phase transitions.
+* Live Badge Visibility Fix: Expanded product card selectors for modern WooCommerce block themes (`.wc-block-product-template__item`, `.product-card`, etc.), implemented single product summary badge injection for block themes, added `wc_get_product(get_the_ID())` fallback in template filters, and added fallback gradient styling.
+* Admin Field Guidance & Diagnostics: Added helper note under Reveal Start field and updated diagnostics notice to clarify SneakyPeak takes over timing and native schedule dates can be left blank.
+
+= 1.2.5 =
+* Subfolder Install Redirect Fix: Added `current_request_url()` private helper that constructs request URLs with `set_url_scheme('//' . HTTP_HOST . REQUEST_URI)` rather than `home_url(REQUEST_URI)`, preventing duplicate subfolder paths (e.g. `/shop/shop/...`) on subfolder WordPress installations.
+* Sanitized Frontend Action Links: Replaced `home_url($request_uri)` and `home_url($req_uri)` across admin bar and custom date modal redirect fields with `current_request_url()`.
+
+= 1.2.4 =
+* Category Archive Preview Fix: Hooked `suppress_caching_if_active()` early on `init`, `template_redirect`, and `send_headers`, applying `DONOTCACHEPAGE` and strict `Cache-Control: no-store` headers so preview requests are never served stale cached archive pages.
+* Redirect Target Preservation: Admin-bar preset, exit, and custom date actions pass explicit sanitized `redirect_to` URLs on frontend requests, ensuring category archives preserve pagination, ordering, and filter query parameters (`?orderby=...`, `/page/2/`).
+* Category & Archive Contextualization: Admin bar automatically infers the winning campaign context from queried product category archives and single product pages, eliminating fallback mismatches on multi-campaign stores.
+* Cache Invalidation & Partitioning: Added preview cache context keys to `woocommerce_variation_prices_hash` to prevent WooCommerce from serving cached transient prices across preview phase transitions. Automated Resolver target resolution cache clearing on preview start and exit.
+* Robust Block Theme Card Targeting: Enhanced JS badge targeting to recognize hidden card markers on Live phase products, ensuring cards are accurately identified across block-based grids and custom archive templates.
+
+= 1.2.3 =
+* Font Upload Fix: Removed get_current_screen() reliance during upload requests; uploads now validate manage_options capability and campaign context directly. Added wp_check_filetype_and_ext filter ensuring .woff, .woff2, and .ttf fonts pass WordPress core file validation while remaining securely blocked for non-admin users.
+* Font Weights Synchronization: Updated Google Font requests and CSS definitions to use exact matching weights (400 regular, 600 semi-bold for labels, 700 bold for prices).
+* Selector Field Guidance: Added explanatory note under the single product custom CSS selector input clarifying that unsupported characters are removed.
+
+= 1.2.2 =
+* Single Product Mock Preview: Added interactive "Single product" mock preview tab in the campaign editor Badge Design section, mirroring single product layout with real-time positioning (Over main gallery image, Inside product summary, Custom CSS selector), nudge transforms, and Live/Teaser mode toggling.
+* Live Font Restyling: Google Fonts and custom uploaded fonts now restyle all editor previews live, including masked teaser prices, calculator outputs, shop card mock, and single product mock. Font size 0 behaves as inherit, and selecting "Theme default" cleans up external font links.
+* Storefront Font Fix: Removed conflicting `!important` inherit rules in CSS, enqueued Google Fonts cleanly on the storefront during Teaser phase via `wp_enqueue_style`, and scoped font-family/font-size directly to `.sneakypeak-teaser-campaign-{id}` elements.
+* Security & Migration Hardening: Sanitized custom CSS selectors on save, wrapped front-end querySelector in try-catch with quiet fallback to gallery, restricted font uploads strictly to manage_options users on campaign screens, and fixed nudge offset migration to check raw stored settings.
 
 = 1.2.1 =
 * Teaser Typography Customization: Curated geometric sans Google Fonts (Jost, Montserrat, Poppins, Outfit, Inter, Questrial) matching modern athletic/retail aesthetics (such as Adidas), plus custom font file upload (.woff2, .woff, .ttf) via WordPress Media Uploader and customizable font size.

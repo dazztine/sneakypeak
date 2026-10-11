@@ -27,6 +27,89 @@ class MetaBox {
         add_action('save_post_sneakypeak_campaign', array(__CLASS__, 'save_meta'), 10, 2);
         add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_admin_assets'));
         add_action('admin_notices', array(__CLASS__, 'display_admin_notices'));
+        add_filter('upload_mimes', array(__CLASS__, 'filter_upload_mimes'));
+        add_filter('wp_check_filetype_and_ext', array(__CLASS__, 'check_filetype_and_ext'), 10, 4);
+    }
+
+    /**
+     * Check if the current request is an upload from the campaign editor.
+     * Does NOT use get_current_screen().
+     * Strictly requires current_user_can('manage_options') and a sneakypeak_campaign post context.
+     */
+    public static function is_campaign_upload_request(): bool {
+        if (!current_user_can('manage_options')) {
+            return false;
+        }
+
+        $post_id = 0;
+        if (isset($_REQUEST['post_id'])) {
+            $post_id = absint($_REQUEST['post_id']);
+        } elseif (isset($_REQUEST['post'])) {
+            $post_id = absint($_REQUEST['post']);
+        }
+
+        if ($post_id > 0) {
+            $post = get_post($post_id);
+            if ($post && $post->post_type === 'sneakypeak_campaign') {
+                return true;
+            }
+        }
+
+        if (isset($_REQUEST['post_type']) && $_REQUEST['post_type'] === 'sneakypeak_campaign') {
+            return true;
+        }
+
+        global $post;
+        if ($post instanceof \WP_Post && $post->post_type === 'sneakypeak_campaign') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Allow font uploads (.woff, .woff2, .ttf) only when current_user_can('manage_options')
+     * and the request is an upload from the campaign editor.
+     */
+    public static function filter_upload_mimes(array $mimes): array {
+        if (!self::is_campaign_upload_request()) {
+            return $mimes;
+        }
+
+        $mimes['woff']  = 'font/woff';
+        $mimes['woff2'] = 'font/woff2';
+        $mimes['ttf']   = 'font/ttf';
+        return $mimes;
+    }
+
+    /**
+     * Filter wp_check_filetype_and_ext so .woff, .woff2, and .ttf pass WordPress content check.
+     */
+    public static function check_filetype_and_ext($data, $file, $filename, $mimes = null) {
+        if (!self::is_campaign_upload_request()) {
+            return $data;
+        }
+
+        if (!is_array($data)) {
+            $data = array('ext' => false, 'type' => false, 'proper_filename' => false);
+        }
+
+        $ext = strtolower(pathinfo((string) $filename, PATHINFO_EXTENSION));
+        if ($ext === 'woff2') {
+            $data['ext']  = 'woff2';
+            $data['type'] = 'font/woff2';
+            $data['proper_filename'] = false;
+        } elseif ($ext === 'woff') {
+            $data['ext']  = 'woff';
+            $data['type'] = 'font/woff';
+            $data['proper_filename'] = false;
+        } elseif ($ext === 'ttf') {
+            $data['ext']  = 'ttf';
+            $data['type'] = 'font/ttf';
+            $data['proper_filename'] = false;
+        }
+
+        return $data;
     }
 
     public static function display_admin_notices(): void {
@@ -88,7 +171,11 @@ class MetaBox {
                 true
             );
 
+            global $post;
+            $post_id = ($post && !empty($post->ID)) ? (int) $post->ID : 0;
+
             wp_localize_script('sneakypeak-admin-designer', 'sneakypeakAdminData', array(
+                'postId'         => $post_id,
                 'currencySymbol' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '₱',
             ));
         }
@@ -273,13 +360,9 @@ class MetaBox {
                 padding-bottom: 8px;
                 border-bottom: 1px solid #e2e4e7;
             }
-            .sneakypeak-preview-card-header h4 {
-                margin: 0;
-                font-size: 13px;
-                font-weight: 700;
-                color: #1d2327;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+            .sneakypeak-mock-tab-group, .sneakypeak-mock-phase-group {
+                display: flex;
+                gap: 4px;
             }
             .sneakypeak-mock-card-container {
                 width: 100%;
@@ -295,7 +378,7 @@ class MetaBox {
             .sneakypeak-mock-image-box {
                 position: relative;
                 background: #f0f0f1;
-                height: 190px;
+                height: 170px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -312,13 +395,83 @@ class MetaBox {
                 margin: 0 0 6px 0;
                 color: #1d2327;
             }
-            .sneakypeak-mock-price-area {
+            .sneakypeak-mock-price-area, .sneakypeak-mock-single-price-area {
                 font-size: 13px;
             }
-            .sneakypeak-mock-regular {
+            .sneakypeak-mock-regular-price, .sneakypeak-mock-single-regular-price {
+                color: #50575e;
+                margin-right: 6px;
+            }
+            .sneakypeak-mock-regular-price.strikethrough, .sneakypeak-mock-single-regular-price.strikethrough {
                 text-decoration: line-through;
                 color: #8c8f94;
-                margin-right: 6px;
+            }
+
+            /* Single Product Mock Styles */
+            .sneakypeak-mock-single-layout {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                gap: 12px;
+                background: #fff;
+                border: 1px solid #e2e4e7;
+                border-radius: 4px;
+                padding: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                box-sizing: border-box;
+            }
+            .sneakypeak-mock-single-gallery-col {
+                display: flex;
+                flex-direction: column;
+            }
+            .sneakypeak-mock-single-main-image {
+                position: relative;
+                background: #f0f0f1;
+                height: 120px;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                color: #8c8f94;
+                font-size: 26px;
+                user-select: none;
+            }
+            .sneakypeak-mock-single-thumbs {
+                display: flex;
+                gap: 4px;
+                margin-top: 6px;
+            }
+            .sneakypeak-mock-single-thumb {
+                width: 22px;
+                height: 22px;
+                background: #e5e5e5;
+                border-radius: 2px;
+                border: 1px solid #dcdcde;
+            }
+            .sneakypeak-mock-single-thumb.active {
+                border-color: #0073aa;
+                background: #d0e7f7;
+            }
+            .sneakypeak-mock-single-summary-col {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                min-width: 0;
+            }
+            .sneakypeak-mock-single-title {
+                font-size: 13px;
+                font-weight: 700;
+                margin: 0 0 6px 0;
+                color: #1d2327;
+                line-height: 1.3;
+            }
+            .sneakypeak-mock-cart-btn {
+                margin-top: 10px !important;
+                font-size: 11px !important;
+                height: 26px !important;
+                line-height: 24px !important;
+                padding: 0 10px !important;
+                align-self: flex-start;
             }
         </style>
 
@@ -354,6 +507,7 @@ class MetaBox {
                     <td>
                         <input type="text" name="sneakypeak[reveal_start_datetime]" value="<?php echo esc_attr($settings['reveal_start_datetime'] ?? ''); ?>" class="regular-text" placeholder="YYYY-MM-DD HH:MM" required />
                         <p class="description"><strong><?php esc_html_e('Required.', 'sneakypeak'); ?></strong> <?php esc_html_e('When live prices unlock and the badge switches to the Live phase.', 'sneakypeak'); ?></p>
+                        <p class="description"><?php esc_html_e('During Live, SneakyPeak shows each product’s WooCommerce sale price, even if the product has no sale schedule. Leave WooCommerce’s sale schedule dates blank.', 'sneakypeak'); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -460,6 +614,19 @@ class MetaBox {
                             </td>
                         </tr>
                         <tr>
+                            <th scope="row"><?php esc_html_e('Badge anchor', 'sneakypeak'); ?></th>
+                            <td>
+                                <select name="sneakypeak[badge_anchor]" id="sneakypeak_badge_anchor">
+                                    <option value="auto" <?php selected($settings['badge_anchor'] ?? 'auto', 'auto'); ?>><?php esc_html_e('Auto (recommended)', 'sneakypeak'); ?></option>
+                                    <option value="card" <?php selected($settings['badge_anchor'] ?? 'auto', 'card'); ?>><?php esc_html_e('Card edge (strict)', 'sneakypeak'); ?></option>
+                                    <option value="image" <?php selected($settings['badge_anchor'] ?? 'auto', 'image'); ?>><?php esc_html_e('Image edge', 'sneakypeak'); ?></option>
+                                </select>
+                                <p class="description" style="margin-top:6px;">
+                                    <?php esc_html_e('Auto anchors to the visual card (inner content container) when the outer card is stretched. Card edge (strict) never re-anchors. Image edge anchors to the image.', 'sneakypeak'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th scope="row"><?php esc_html_e('Position Nudge (px)', 'sneakypeak'); ?></th>
                             <td>
                                 <?php
@@ -467,14 +634,14 @@ class MetaBox {
                                 ?>
                                 <label style="margin-right:16px;">
                                     <?php esc_html_e('Horizontal (X):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[badge_nudge_x]" value="<?php echo esc_attr($nudge_x_val); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[badge_nudge_x]" value="<?php echo esc_attr($nudge_x_val); ?>" class="small-text" /> px
                                 </label>
                                 <label>
                                     <?php esc_html_e('Vertical (Y):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[badge_nudge_y]" value="<?php echo esc_attr($nudge_y_val); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[badge_nudge_y]" value="<?php echo esc_attr($nudge_y_val); ?>" class="small-text" /> px
                                 </label>
                                 <p class="description" style="margin-top:6px;">
-                                    <?php esc_html_e('Move the badge by pixels from its corner. Right/down are positive, left/up are negative.', 'sneakypeak'); ?>
+                                    <?php esc_html_e('Move the badge by pixels from its corner (-200 to +200). Right/down are positive, left/up are negative.', 'sneakypeak'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -560,7 +727,7 @@ class MetaBox {
                             <th scope="row"><?php esc_html_e('Target CSS Selector', 'sneakypeak'); ?></th>
                             <td>
                                 <input type="text" name="sneakypeak[single_badge_custom_selector]" value="<?php echo esc_attr($settings['single_badge_custom_selector'] ?? ''); ?>" class="regular-text" placeholder=".product-gallery, .entry-summary, etc." />
-                                <p class="description"><?php esc_html_e('Element selector where the badge will be injected on single product pages.', 'sneakypeak'); ?></p>
+                                <p class="description"><?php esc_html_e('Element selector where the badge will be injected on single product pages. Unsupported characters are removed.', 'sneakypeak'); ?></p>
                             </td>
                         </tr>
                         <tr>
@@ -576,14 +743,14 @@ class MetaBox {
                                 <?php list($single_nudge_x, $single_nudge_y) = $campaign->get_single_nudge_offsets(); ?>
                                 <label style="margin-right:16px;">
                                     <?php esc_html_e('Horizontal (X):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_x]" value="<?php echo esc_attr($single_nudge_x); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[single_badge_nudge_x]" value="<?php echo esc_attr($single_nudge_x); ?>" class="small-text" /> px
                                 </label>
                                 <label>
                                     <?php esc_html_e('Vertical (Y):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_y]" value="<?php echo esc_attr($single_nudge_y); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[single_badge_nudge_y]" value="<?php echo esc_attr($single_nudge_y); ?>" class="small-text" /> px
                                 </label>
                                 <p class="description" style="margin-top:6px;">
-                                    <?php esc_html_e('Independent fine-tuning nudge for single product view.', 'sneakypeak'); ?>
+                                    <?php esc_html_e('Independent fine-tuning nudge (-200 to +200 px) for single product view.', 'sneakypeak'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -594,9 +761,12 @@ class MetaBox {
                 <div class="sneakypeak-sticky-preview-col">
                     <div class="sneakypeak-preview-card-panel">
                         <div class="sneakypeak-preview-card-header">
-                            <h4><?php esc_html_e('Badge preview', 'sneakypeak'); ?></h4>
-                            <div>
-                                <button type="button" class="button button-small sneakypeak-mock-phase-toggle button-primary" data-phase="teaser"><?php esc_html_e('Teaser', 'sneakypeak'); ?></button>
+                            <div class="sneakypeak-mock-tab-group">
+                                <button type="button" class="button button-small sneakypeak-mock-tab-toggle active button-primary" data-tab="shop"><?php esc_html_e('Shop card', 'sneakypeak'); ?></button>
+                                <button type="button" class="button button-small sneakypeak-mock-tab-toggle button-secondary" data-tab="single"><?php esc_html_e('Single product', 'sneakypeak'); ?></button>
+                            </div>
+                            <div class="sneakypeak-mock-phase-group">
+                                <button type="button" class="button button-small sneakypeak-mock-phase-toggle button-primary active" data-phase="teaser"><?php esc_html_e('Teaser', 'sneakypeak'); ?></button>
                                 <button type="button" class="button button-small sneakypeak-mock-phase-toggle button-secondary" data-phase="live"><?php esc_html_e('Live', 'sneakypeak'); ?></button>
                             </div>
                         </div>
@@ -604,24 +774,89 @@ class MetaBox {
                         <?php
                         $curr_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '₱';
                         ?>
-                        <div class="sneakypeak-mock-card-container" id="sneakypeak-mock-card">
-                            <!-- Dynamic Badge Mock -->
-                            <span id="sneakypeak-mock-badge-wrap" class="sneakypeak-badge-wrap sneakypeak-corner-top-right sneakypeak-shape-ribbon sneakypeak-size-medium">
-                                <span id="sneakypeak-mock-badge" class="sneakypeak-badge sneakypeak-badge-teaser sneakypeak-badge-shape-ribbon sneakypeak-badge-size-medium">
-                                    <span id="sneakypeak-mock-icon" class="sneakypeak-badge-icon sneakypeak-icon-star">&#9733;&nbsp;</span>
-                                    <span id="sneakypeak-mock-text">SNEAK PEEK</span>
-                                </span>
-                            </span>
 
-                            <div class="sneakypeak-mock-image-box">
-                                <span>📦</span>
-                            </div>
-                            <div class="sneakypeak-mock-details">
-                                <h4 class="sneakypeak-mock-title"><?php esc_html_e('Sample Product Card', 'sneakypeak'); ?></h4>
-                                <div class="sneakypeak-mock-price-area">
-                                    <span class="sneakypeak-mock-regular"><?php echo esc_html($curr_symbol); ?>12,500.00</span>
-                                    <strong style="color:#d63638;"><?php echo esc_html($curr_symbol); ?>8,499.00</strong>
+                        <!-- 1. Shop Card Mock Section -->
+                        <div id="sneakypeak-mock-shop-container" class="sneakypeak-mock-view-panel">
+                            <h4 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1d2327; text-transform:uppercase; letter-spacing:0.5px;"><?php esc_html_e('Badge preview', 'sneakypeak'); ?></h4>
+                            <div class="sneakypeak-mock-card-container" id="sneakypeak-mock-card">
+                                <!-- Dynamic Badge Mock -->
+                                <span id="sneakypeak-mock-badge-wrap" class="sneakypeak-badge-wrap sneakypeak-corner-top-right sneakypeak-shape-ribbon sneakypeak-size-medium">
+                                    <span id="sneakypeak-mock-badge" class="sneakypeak-badge sneakypeak-badge-teaser sneakypeak-badge-shape-ribbon sneakypeak-badge-size-medium">
+                                        <span id="sneakypeak-mock-icon" class="sneakypeak-badge-icon sneakypeak-icon-star">&#9733;&nbsp;</span>
+                                        <span id="sneakypeak-mock-text">SNEAK PEEK</span>
+                                    </span>
+                                </span>
+
+                                <div class="sneakypeak-mock-image-box">
+                                    <span>📦</span>
                                 </div>
+                                <div class="sneakypeak-mock-details">
+                                    <h4 class="sneakypeak-mock-title"><?php esc_html_e('Sample Product Card', 'sneakypeak'); ?></h4>
+                                    <div class="sneakypeak-mock-price-area">
+                                        <span class="sneakypeak-mock-regular-price"><?php echo esc_html($curr_symbol); ?>12,500.00</span>
+                                        <strong class="sneakypeak-mock-live-price" style="display:none; color:#d63638;"><?php echo esc_html($curr_symbol); ?>8,499.00</strong>
+                                        <div class="sneakypeak-mock-teaser-line sneakypeak-teaser-wrap">
+                                            <span class="sneakypeak-teaser-label"><?php echo esc_html($settings['teaser_label'] ?? 'Sale Price:'); ?></span>
+                                            <span class="sneakypeak-teaser-price"><?php echo esc_html($curr_symbol); ?>8,???</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Single Product Page Mock Section -->
+                        <div id="sneakypeak-mock-single-container" class="sneakypeak-mock-view-panel" style="display:none;">
+                            <h4 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1d2327; text-transform:uppercase; letter-spacing:0.5px;"><?php esc_html_e('Single product page preview', 'sneakypeak'); ?></h4>
+                            <div class="sneakypeak-mock-single-layout" id="sneakypeak-mock-single">
+                                <!-- Gallery Column -->
+                                <div class="sneakypeak-mock-single-gallery-col">
+                                    <div class="sneakypeak-mock-single-main-image" id="sneakypeak-mock-single-image-box">
+                                        <span class="sneakypeak-mock-single-image-placeholder">📷</span>
+                                        <!-- Main Gallery Badge Target -->
+                                        <span id="sneakypeak-mock-single-gallery-badge-wrap" class="sneakypeak-badge-wrap sneakypeak-badge-single-wrap sneakypeak-corner-top-right sneakypeak-shape-ribbon sneakypeak-size-medium">
+                                            <span id="sneakypeak-mock-single-gallery-badge" class="sneakypeak-badge sneakypeak-badge-teaser sneakypeak-badge-single sneakypeak-badge-shape-ribbon sneakypeak-badge-size-medium">
+                                                <span id="sneakypeak-mock-single-gallery-icon" class="sneakypeak-badge-icon sneakypeak-icon-star">&#9733;&nbsp;</span>
+                                                <span id="sneakypeak-mock-single-gallery-text">SNEAK PEEK</span>
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="sneakypeak-mock-single-thumbs">
+                                        <span class="sneakypeak-mock-single-thumb active"></span>
+                                        <span class="sneakypeak-mock-single-thumb"></span>
+                                        <span class="sneakypeak-mock-single-thumb"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Column -->
+                                <div class="sneakypeak-mock-single-summary-col">
+                                    <!-- Inside Summary / Custom Selector Badge Target (above title) -->
+                                    <div id="sneakypeak-mock-single-summary-badge-container" style="display:none; margin-bottom:8px; line-height:1;">
+                                        <span id="sneakypeak-mock-single-summary-badge-wrap" class="sneakypeak-badge-wrap sneakypeak-badge-single-wrap sneakypeak-shape-ribbon sneakypeak-size-medium" style="position:relative; display:inline-block; top:auto; left:auto; right:auto; bottom:auto;">
+                                            <span id="sneakypeak-mock-single-summary-badge" class="sneakypeak-badge sneakypeak-badge-teaser sneakypeak-badge-single sneakypeak-badge-shape-ribbon sneakypeak-badge-size-medium">
+                                                <span id="sneakypeak-mock-single-summary-icon" class="sneakypeak-badge-icon sneakypeak-icon-star">&#9733;&nbsp;</span>
+                                                <span id="sneakypeak-mock-single-summary-text">SNEAK PEEK</span>
+                                            </span>
+                                        </span>
+                                    </div>
+
+                                    <h4 class="sneakypeak-mock-single-title"><?php esc_html_e('Premium Athletic Shoes', 'sneakypeak'); ?></h4>
+                                    <div class="sneakypeak-mock-single-price-area">
+                                        <span class="sneakypeak-mock-single-regular-price"><?php echo esc_html($curr_symbol); ?>12,500.00</span>
+                                        <strong class="sneakypeak-mock-single-live-price" style="display:none; color:#d63638;"><?php echo esc_html($curr_symbol); ?>8,499.00</strong>
+                                        <div class="sneakypeak-mock-single-teaser-line sneakypeak-teaser-wrap">
+                                            <span class="sneakypeak-teaser-label"><?php echo esc_html($settings['teaser_label'] ?? 'Sale Price:'); ?></span>
+                                            <span class="sneakypeak-teaser-price"><?php echo esc_html($curr_symbol); ?>8,???</span>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="button button-primary sneakypeak-mock-cart-btn" disabled><?php esc_html_e('Add to cart', 'sneakypeak'); ?></button>
+                                </div>
+                            </div>
+
+                            <!-- Note under mock for Custom CSS Selector mode -->
+                            <div id="sneakypeak-mock-single-custom-note" style="display:none; margin-top:10px; padding:6px 8px; background:#fff; border:1px solid #ccd0d4; border-radius:3px; font-size:11px; color:#50575e; line-height:1.4;">
+                                <span class="dashicons dashicons-info" style="font-size:14px; width:14px; height:14px; vertical-align:text-top; margin-right:2px;"></span>
+                                <span id="sneakypeak-mock-single-custom-note-text"></span>
                             </div>
                         </div>
                     </div>
@@ -660,7 +895,7 @@ class MetaBox {
                     <th scope="row"><?php esc_html_e('Teaser Font Style', 'sneakypeak'); ?></th>
                     <td>
                         <select name="sneakypeak[teaser_font_family]" id="sneakypeak-teaser-font-family">
-                            <option value="inherit" <?php selected($settings['teaser_font_family'] ?? 'inherit', 'inherit'); ?>><?php esc_html_e('Theme Default (inherit)', 'sneakypeak'); ?></option>
+                            <option value="inherit" <?php selected($settings['teaser_font_family'] ?? 'inherit', 'inherit'); ?>><?php esc_html_e('Theme default', 'sneakypeak'); ?></option>
                             <optgroup label="<?php esc_attr_e('Curated Geometric Sans (Adidas / Modern Retail Style)', 'sneakypeak'); ?>">
                                 <option value="jost" <?php selected($settings['teaser_font_family'] ?? '', 'jost'); ?>>Jost (Geometric Sans / Futura-style)</option>
                                 <option value="montserrat" <?php selected($settings['teaser_font_family'] ?? '', 'montserrat'); ?>>Montserrat (Bold Urban / Retail)</option>
@@ -702,6 +937,16 @@ class MetaBox {
 
     public static function save_meta(int $post_id, \WP_Post $post): void {
         if (!isset($_POST[self::NONCE_NAME]) || !wp_verify_nonce($_POST[self::NONCE_NAME], self::NONCE_ACTION)) {
+            error_log('[SneakyPeak] Security check failed: invalid or missing nonce on save_meta for post ID ' . $post_id);
+            $user_id = get_current_user_id();
+            if ($user_id > 0) {
+                set_transient('sneakypeak_notices_' . $user_id . '_' . $post_id, array(
+                    array(
+                        'type'    => 'error',
+                        'message' => __('SneakyPeak: settings were not saved (security check failed).', 'sneakypeak'),
+                    ),
+                ), 60);
+            }
             return;
         }
 
@@ -710,6 +955,16 @@ class MetaBox {
         }
 
         if (!current_user_can('manage_woocommerce', $post_id)) {
+            error_log('[SneakyPeak] Security check failed: current user lacks manage_woocommerce capability on save_meta for post ID ' . $post_id);
+            $user_id = get_current_user_id();
+            if ($user_id > 0) {
+                set_transient('sneakypeak_notices_' . $user_id . '_' . $post_id, array(
+                    array(
+                        'type'    => 'error',
+                        'message' => __('SneakyPeak: settings were not saved (security check failed).', 'sneakypeak'),
+                    ),
+                ), 60);
+            }
             return;
         }
 
@@ -859,9 +1114,13 @@ class MetaBox {
             ? $input['badge_icon']
             : 'star';
 
+        $clean['badge_anchor'] = in_array($input['badge_anchor'] ?? '', array('auto', 'card', 'image'), true)
+            ? $input['badge_anchor']
+            : 'auto';
+
         $clean['badge_font_size'] = min(24, max(9, absint($input['badge_font_size'] ?? 12)));
-        $clean['badge_nudge_x']   = max(-100, min(100, (int) ($input['badge_nudge_x'] ?? 0)));
-        $clean['badge_nudge_y']   = max(-100, min(100, (int) ($input['badge_nudge_y'] ?? 0)));
+        $clean['badge_nudge_x']   = max(-200, min(200, (int) ($input['badge_nudge_x'] ?? 0)));
+        $clean['badge_nudge_y']   = max(-200, min(200, (int) ($input['badge_nudge_y'] ?? 0)));
 
         $clean['badge_text_teaser'] = sanitize_text_field($input['badge_text_teaser'] ?? 'SNEAK PEEK');
         $clean['badge_text_live']   = sanitize_text_field($input['badge_text_live'] ?? 'SALE NOW');
@@ -880,12 +1139,18 @@ class MetaBox {
         $clean['single_badge_position'] = in_array($input['single_badge_position'] ?? '', array('gallery', 'summary', 'custom'), true)
             ? $input['single_badge_position']
             : 'gallery';
-        $clean['single_badge_custom_selector'] = sanitize_text_field($input['single_badge_custom_selector'] ?? '');
+
+        // Sanitise custom selector: reject <, >, {, }, quotes (', "), backticks (`), and ;
+        // and limit to 200 chars
+        $raw_selector = trim((string) ($input['single_badge_custom_selector'] ?? ''));
+        $cleaned_selector = str_replace(array('<', '>', '{', '}', "'", '"', '`', ';'), '', $raw_selector);
+        $clean['single_badge_custom_selector'] = substr(sanitize_text_field($cleaned_selector), 0, 200);
+
         $clean['single_badge_corner'] = in_array($input['single_badge_corner'] ?? '', array('top-right', 'top-left', 'bottom-left', 'bottom-right'), true)
             ? $input['single_badge_corner']
             : 'top-right';
-        $clean['single_badge_nudge_x'] = max(-100, min(100, (int) ($input['single_badge_nudge_x'] ?? 0)));
-        $clean['single_badge_nudge_y'] = max(-100, min(100, (int) ($input['single_badge_nudge_y'] ?? 0)));
+        $clean['single_badge_nudge_x'] = max(-200, min(200, (int) ($input['single_badge_nudge_x'] ?? 0)));
+        $clean['single_badge_nudge_y'] = max(-200, min(200, (int) ($input['single_badge_nudge_y'] ?? 0)));
 
         // Teaser settings
         $clean['mask_rule'] = in_array($input['mask_rule'] ?? '', array('keep_first', 'mask_last_3'), true) ? $input['mask_rule'] : 'keep_first';
@@ -898,7 +1163,27 @@ class MetaBox {
         $clean['teaser_font_family'] = in_array($input['teaser_font_family'] ?? '', $valid_fonts, true)
             ? $input['teaser_font_family']
             : 'inherit';
-        $clean['teaser_font_custom_url']  = esc_url_raw(trim($input['teaser_font_custom_url'] ?? ''));
+
+        // Validate uploaded font URL: must be .woff2, .woff, or .ttf and originate from media library
+        $raw_font_url = esc_url_raw(trim($input['teaser_font_custom_url'] ?? ''));
+        if (!empty($raw_font_url)) {
+            $path = wp_parse_url($raw_font_url, PHP_URL_PATH);
+            $ext  = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+            if (!in_array($ext, array('woff2', 'woff', 'ttf'), true)) {
+                $raw_font_url = '';
+            } else {
+                $upload_dir = wp_upload_dir();
+                $base_url   = $upload_dir['baseurl'];
+                $is_media_library = (strpos($raw_font_url, $base_url) === 0);
+                if (!$is_media_library && function_exists('attachment_url_to_postid')) {
+                    $is_media_library = (attachment_url_to_postid($raw_font_url) > 0);
+                }
+                if (!$is_media_library) {
+                    $raw_font_url = '';
+                }
+            }
+        }
+        $clean['teaser_font_custom_url']  = $raw_font_url;
         $clean['teaser_font_custom_name'] = sanitize_text_field($input['teaser_font_custom_name'] ?? '');
         $clean['teaser_font_size']        = max(0, min(60, absint($input['teaser_font_size'] ?? 0)));
 
@@ -906,6 +1191,10 @@ class MetaBox {
 
         // Invalidate target resolution caches
         Resolver::invalidate_caches();
+
+        // Reschedule WP-Cron events and purge cache on campaign save
+        \SneakyPeak\Support\Cache::schedule_campaign_events($post_id);
+        \SneakyPeak\Support\Cache::purge_all('Campaign save', $post_id);
     }
 
     /**
@@ -1101,7 +1390,7 @@ class MetaBox {
         }
         if ($products_with_wc_schedule > 0) {
             $warnings[] = sprintf(
-                __('%d targeted product(s) have native WooCommerce Sale Schedules set (_sale_price_dates_from/to). SneakyPeak independent reveal logic will override WooCommerce sale schedules, but clearing native dates is recommended to avoid confusion.', 'sneakypeak'),
+                __('%d targeted product(s) have native WooCommerce Sale Schedules set (_sale_price_dates_from/to). SneakyPeak takes over timing and enforces campaign sale prices during Live, but leaving WooCommerce sale schedule dates blank is recommended to avoid confusion.', 'sneakypeak'),
                 $products_with_wc_schedule
             );
         }
@@ -1147,6 +1436,51 @@ class MetaBox {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+
+        <?php
+        $cron_diag = \SneakyPeak\Support\Cache::get_next_phase_change_diagnostics($campaign);
+        ?>
+        <div class="sneakypeak-panel" style="margin-bottom: 20px; background: #f6f7f7; border: 1px solid #ccd0d4;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#1d2327; margin-bottom:4px;">
+                        <?php esc_html_e('Next Scheduled Phase Change:', 'sneakypeak'); ?>
+                        <?php if ($cron_diag) : ?>
+                            <strong><?php echo esc_html($cron_diag['phase_label']); ?></strong>
+                            <span style="color:#50575e;">(<?php echo esc_html($format_ts($cron_diag['timestamp'])); ?>)</span>
+                            &nbsp;—&nbsp;
+                            <strong><?php esc_html_e('WP-Cron Status:', 'sneakypeak'); ?></strong>
+                            <?php if ($cron_diag['status'] === 'scheduled') : ?>
+                                <span style="background:#46b450; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;"><?php esc_html_e('scheduled', 'sneakypeak'); ?></span>
+                            <?php elseif ($cron_diag['status'] === 'overdue') : ?>
+                                <span style="background:#d63638; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;">
+                                    <?php printf(esc_html__('overdue (%d min)', 'sneakypeak'), (int) ceil($cron_diag['overdue_seconds'] / 60)); ?>
+                                </span>
+                            <?php else : ?>
+                                <span style="background:#dba617; color:#fff; font-size:11px; padding:2px 7px; border-radius:3px; font-weight:600;"><?php esc_html_e('missing', 'sneakypeak'); ?></span>
+                            <?php endif; ?>
+                        <?php else : ?>
+                            <span style="color:#646970; font-weight:normal;"><?php esc_html_e('None (Draft, disabled, or campaign ended)', 'sneakypeak'); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div style="font-size:11px; color:#646970; line-height:1.4;">
+                        <?php esc_html_e('Phase changes use WP-Cron. For exact timing, add a server cron that calls wp-cron.php every minute, and set define(\'DISABLE_WP_CRON\', true);.', 'sneakypeak'); ?>
+                    </div>
+                </div>
+                <div>
+                    <?php
+                    $purge_url = wp_nonce_url(
+                        admin_url('admin-post.php?action=sneakypeak_purge_cache_now&campaign_id=' . (int) $post->ID),
+                        \SneakyPeak\Support\Cache::PURGE_NONCE_ACTION
+                    );
+                    ?>
+                    <a href="<?php echo esc_url($purge_url); ?>" class="button button-secondary" style="display:inline-flex; align-items:center; gap:5px;">
+                        <span class="dashicons dashicons-update" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span>
+                        <?php esc_html_e('Purge Cache Now', 'sneakypeak'); ?>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <div class="sneakypeak-insights-grid">
             

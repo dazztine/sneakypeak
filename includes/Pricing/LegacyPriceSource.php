@@ -37,8 +37,27 @@ class LegacyPriceSource implements PriceSource {
 
     public function get_campaign_price(WC_Product $product, Campaign $campaign): string {
         $product_id = $product->get_id();
+
+        if ($product->is_type('variable')) {
+            $children = $product->get_children();
+            $min_sale_price = PHP_FLOAT_MAX;
+            $found_sale = false;
+
+            if (!empty($children)) {
+                foreach ($children as $child_id) {
+                    $child_sale = get_post_meta($child_id, '_sale_price', true);
+                    if ($child_sale !== '' && $child_sale !== null && (float) $child_sale > 0) {
+                        $min_sale_price = min($min_sale_price, (float) $child_sale);
+                        $found_sale = true;
+                    }
+                }
+            }
+
+            return $found_sale ? (string) $min_sale_price : '';
+        }
+
         $sale_price = get_post_meta($product_id, '_sale_price', true);
-        if ($sale_price !== '' && $sale_price !== null) {
+        if ($sale_price !== '' && $sale_price !== null && (float) $sale_price > 0) {
             return (string) $sale_price;
         }
         return '';

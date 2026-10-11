@@ -78,6 +78,33 @@ class Controller {
             return;
         }
 
+        $gfont_map = array(
+            'jost'       => 'Jost:wght@400;600;700',
+            'montserrat' => 'Montserrat:wght@400;600;700',
+            'poppins'    => 'Poppins:wght@400;600;700',
+            'outfit'     => 'Outfit:wght@400;600;700',
+            'inter'      => 'Inter:wght@400;600;700',
+            'questrial'  => 'Questrial',
+        );
+
+        $enqueued_fonts = array();
+        foreach ($active_campaigns as $camp) {
+            $phase = $camp->get_phase();
+            if ($phase === Campaign::PHASE_TEASER) {
+                $font_fam = (string) $camp->get_setting('teaser_font_family', 'inherit');
+                if (isset($gfont_map[$font_fam]) && !isset($enqueued_fonts[$font_fam])) {
+                    $enqueued_fonts[$font_fam] = true;
+                    $font_url = 'https://fonts.googleapis.com/css2?family=' . $gfont_map[$font_fam] . '&display=swap';
+                    wp_enqueue_style(
+                        'sneakypeak-gfont-' . sanitize_key($font_fam),
+                        esc_url($font_url),
+                        array(),
+                        null
+                    );
+                }
+            }
+        }
+
         wp_enqueue_style(
             'sneakypeak-frontend',
             SNEAKYPEAK_PLUGIN_URL . 'assets/css/sneakypeak.css',
@@ -102,6 +129,7 @@ class Controller {
         $campaigns_payload = array();
         foreach ($active_campaigns as $camp) {
             $phase = $camp->get_phase();
+            list($nudge_x, $nudge_y) = $camp->get_nudge_offsets();
             $campaigns_payload[$camp->get_id()] = array(
                 'id'                   => $camp->get_id(),
                 'phase'                => $phase,
@@ -110,6 +138,9 @@ class Controller {
                 'singleBadgeHtml'      => Badge::render($camp, $phase, true),
                 'singlePosition'       => (string) $camp->get_setting('single_badge_position', 'gallery'),
                 'singleCustomSelector' => (string) $camp->get_setting('single_badge_custom_selector', ''),
+                'badgeAnchor'          => (string) $camp->get_setting('badge_anchor', 'auto'),
+                'nudgeX'               => (int) $nudge_x,
+                'nudgeY'               => (int) $nudge_y,
             );
         }
 
@@ -122,9 +153,10 @@ class Controller {
     /**
      * Add sneakypeak-promo and campaign-specific classes to product cards
      */
-    public static function filter_post_class(array $classes, $class, $post_id): array {
-        if (get_post_type($post_id) === 'product') {
-            $product = wc_get_product($post_id);
+    public static function filter_post_class(array $classes, $class = '', $post_id = null): array {
+        $pid = $post_id ? (int) $post_id : get_the_ID();
+        if ($pid > 0 && get_post_type($pid) === 'product') {
+            $product = wc_get_product($pid);
             if ($product) {
                 $res = Resolver::resolve($product);
                 if ($res['campaign'] !== null) {
@@ -137,7 +169,13 @@ class Controller {
         return $classes;
     }
 
-    public static function filter_woocommerce_post_class(array $classes, $product): array {
+    public static function filter_woocommerce_post_class(array $classes, $product = null): array {
+        if (is_numeric($product)) {
+            $product = wc_get_product($product);
+        } elseif (!$product) {
+            $pid = get_the_ID();
+            $product = $pid ? wc_get_product($pid) : null;
+        }
         if ($product && is_a($product, 'WC_Product')) {
             $res = Resolver::resolve($product);
             if ($res['campaign'] !== null) {
@@ -152,8 +190,9 @@ class Controller {
     public static function filter_body_class(array $classes): array {
         if (is_product()) {
             global $product;
-            if (is_a($product, 'WC_Product')) {
-                $res = Resolver::resolve($product);
+            $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+            if ($prod && is_a($prod, 'WC_Product')) {
+                $res = Resolver::resolve($prod);
                 if ($res['campaign'] !== null) {
                     $classes[] = 'sneakypeak-promo-single';
                     $classes[] = 'sneakypeak-campaign-' . $res['campaign']->get_id();
@@ -173,11 +212,12 @@ class Controller {
             return $html;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return $html;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null || self::$single_badge_rendered || strpos($html, 'sneakypeak-badge') !== false) {
             return $html;
         }
@@ -189,7 +229,7 @@ class Controller {
         }
 
         // Only attach to primary product image in gallery
-        if ((int) $attachment_id !== (int) $product->get_image_id()) {
+        if ((int) $attachment_id !== (int) $prod->get_image_id()) {
             return $html;
         }
 
@@ -213,11 +253,12 @@ class Controller {
             return;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null) {
             return;
         }
@@ -239,11 +280,12 @@ class Controller {
             return;
         }
         global $product;
-        if (!is_a($product, 'WC_Product')) {
+        $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
+        if (!$prod || !is_a($prod, 'WC_Product')) {
             return;
         }
 
-        $res = Resolver::resolve($product);
+        $res = Resolver::resolve($prod);
         if ($res['campaign'] === null) {
             return;
         }
@@ -275,7 +317,54 @@ class Controller {
             return $price_html;
         }
 
-        // If campaign is in Live phase or Ended, let standard WooCommerce / live pricing render
+        // In Live phase, append hidden card marker for rock-solid JS card targeting across block themes
+        if ($res['phase'] === Campaign::PHASE_LIVE) {
+            $marker = sprintf(
+                '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
+                esc_attr($res['campaign']->get_id())
+            );
+
+            // Variable products: format "From [sale price]" with struck-through regular price
+            if ($product->is_type('variable')) {
+                $children = $product->get_children();
+                $min_sale = PHP_FLOAT_MAX;
+                $min_reg  = 0.0;
+                $found_sale = false;
+
+                if (!empty($children)) {
+                    foreach ($children as $child_id) {
+                        $child_sale = get_post_meta($child_id, '_sale_price', true);
+                        $child_reg  = get_post_meta($child_id, '_regular_price', true);
+                        if ($child_sale !== '' && $child_sale !== null && (float) $child_sale > 0) {
+                            $val = (float) $child_sale;
+                            if ($val < $min_sale) {
+                                $min_sale = $val;
+                                $min_reg  = (float) $child_reg;
+                                $found_sale = true;
+                            }
+                        }
+                    }
+                }
+
+                if ($found_sale) {
+                    $prefix = (string) $res['campaign']->get_setting('teaser_variable_prefix', 'From');
+                    $prefix_html = !empty($prefix) ? '<span class="sneakypeak-from">' . esc_html($prefix) . ' </span>' : '';
+                    if ($min_reg > $min_sale) {
+                        $display_reg  = wc_get_price_to_display($product, array('price' => $min_reg));
+                        $display_sale = wc_get_price_to_display($product, array('price' => $min_sale));
+                        $formatted_price = wc_format_sale_price($display_reg, $display_sale) . $product->get_price_suffix();
+                    } else {
+                        $display_sale = wc_get_price_to_display($product, array('price' => $min_sale));
+                        $formatted_price = wc_price($display_sale) . $product->get_price_suffix();
+                    }
+                    return $prefix_html . $formatted_price . $marker;
+                }
+            }
+
+            return $price_html . $marker;
+        }
+
+        // If campaign is in any phase other than Teaser (e.g. Scheduled or Ended), let standard pricing render
         if ($res['phase'] !== Campaign::PHASE_TEASER) {
             return $price_html;
         }
@@ -304,6 +393,7 @@ class Controller {
 
     /**
      * Early sale guard: enforce regular price during Scheduled and Teaser phases
+     * Live enforcement: enforce sale price during Live phase regardless of WooCommerce native schedule
      */
     public static function filter_product_get_price($price, $product) {
         if (self::should_guard_product($product)) {
@@ -311,6 +401,10 @@ class Controller {
             if ($reg !== '' && $reg !== null) {
                 return $reg;
             }
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
         }
         return $price;
     }
@@ -322,12 +416,20 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $price;
     }
 
     public static function filter_product_get_sale_price($sale_price, $product) {
         if (self::should_guard_product($product)) {
             return '';
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
         }
         return $sale_price;
     }
@@ -336,12 +438,20 @@ class Controller {
         if (self::should_guard_product($product)) {
             return '';
         }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $sale_price;
     }
 
     public static function filter_product_is_on_sale($is_on_sale, $product) {
         if (self::should_guard_product($product)) {
             return false;
+        }
+        $live_sale = self::get_live_enforced_sale_price($product);
+        if ($live_sale !== null) {
+            return true;
         }
         return $is_on_sale;
     }
@@ -353,6 +463,10 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($variation);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $price;
     }
 
@@ -363,6 +477,10 @@ class Controller {
                 return $reg;
             }
         }
+        $live_sale = self::get_live_enforced_sale_price($variation);
+        if ($live_sale !== null) {
+            return $live_sale;
+        }
         return $sale_price;
     }
 
@@ -371,6 +489,12 @@ class Controller {
         if ($res['campaign'] !== null) {
             $hash[] = 'sneakypeak_guard_phase_' . $res['phase'];
         }
+        $res_live = Resolver::resolve($product);
+        if ($res_live['campaign'] !== null && $res_live['phase'] === Campaign::PHASE_LIVE) {
+            $hash[] = 'sneakypeak_live_campaign_' . $res_live['campaign']->get_id();
+            $hash[] = 'sneakypeak_live_phase';
+        }
+        $hash[] = 'sneakypeak_ctx_' . Resolver::get_preview_cache_context();
         return $hash;
     }
 
@@ -379,6 +503,11 @@ class Controller {
             $reg = $product->get_regular_price();
             if ($reg !== '' && $reg !== null) {
                 $markup['price'] = wc_format_decimal($reg, wc_get_price_decimals());
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($product);
+            if ($live_sale !== null) {
+                $markup['price'] = wc_format_decimal($live_sale, wc_get_price_decimals());
             }
         }
         return $markup;
@@ -391,6 +520,20 @@ class Controller {
                 $data['display_price'] = wc_get_price_to_display($variation, array('price' => $reg));
                 $data['display_regular_price'] = wc_get_price_to_display($variation, array('price' => $reg));
                 $data['price_html'] = '';
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($variation);
+            if ($live_sale !== null) {
+                $disp_sale = wc_get_price_to_display($variation, array('price' => $live_sale));
+                $reg = $variation->get_regular_price();
+                $data['display_price'] = $disp_sale;
+                if ($reg !== '' && $reg !== null && (float) $reg > (float) $live_sale) {
+                    $disp_reg = wc_get_price_to_display($variation, array('price' => $reg));
+                    $data['display_regular_price'] = $disp_reg;
+                    $data['price_html'] = '<span class="price">' . wc_format_sale_price($disp_reg, $disp_sale) . $variation->get_price_suffix() . '</span>';
+                } else {
+                    $data['price_html'] = '<span class="price">' . wc_price($disp_sale) . $variation->get_price_suffix() . '</span>';
+                }
             }
         }
         return $data;
@@ -408,6 +551,16 @@ class Controller {
                 $prices['regular_price'] = $reg_minor;
                 $prices['sale_price'] = $reg_minor;
                 $prices['price_range'] = null;
+            }
+        } else {
+            $live_sale = self::get_live_enforced_sale_price($product);
+            if ($live_sale !== null) {
+                $decimals = wc_get_price_decimals();
+                $minor_units = pow(10, $decimals);
+                $sale_minor = (string) round((float) $live_sale * $minor_units);
+
+                $prices['price'] = $sale_minor;
+                $prices['sale_price'] = $sale_minor;
             }
         }
         return $prices;
@@ -434,6 +587,29 @@ class Controller {
     }
 
     /**
+     * Get live enforced sale price for a product or variation if in Live phase.
+     * Mirror of the guard: active when Resolver::resolve returns Campaign::PHASE_LIVE.
+     *
+     * @param WC_Product|mixed $product
+     * @return string|null
+     */
+    private static function get_live_enforced_sale_price($product): ?string {
+        if (!$product || !is_a($product, 'WC_Product')) {
+            return null;
+        }
+        $res = Resolver::resolve($product);
+        if ($res['campaign'] === null || $res['phase'] !== Campaign::PHASE_LIVE) {
+            return null;
+        }
+        $price_source = Resolver::get_price_source();
+        $sale_price = $price_source->get_campaign_price($product, $res['campaign']);
+        if ($sale_price !== '' && (float) $sale_price > 0) {
+            return (string) $sale_price;
+        }
+        return null;
+    }
+
+    /**
      * Generate dynamic inline CSS for active campaigns
      *
      * @param Campaign[] $active_campaigns
@@ -441,16 +617,6 @@ class Controller {
      */
     public static function get_inline_custom_css(array $active_campaigns): string {
         $css = '';
-        $google_fonts_needed = array();
-
-        $gfont_map = array(
-            'jost'       => 'Jost:wght@700;800',
-            'montserrat' => 'Montserrat:wght@700;800',
-            'poppins'    => 'Poppins:wght@700;800',
-            'outfit'     => 'Outfit:wght@700;800',
-            'inter'      => 'Inter:wght@700;800',
-            'questrial'  => 'Questrial',
-        );
 
         foreach ($active_campaigns as $camp) {
             $cid = $camp->get_id();
@@ -495,24 +661,28 @@ class Controller {
             }
             $teaser_font_size    = absint($camp->get_setting('teaser_font_size', 0));
 
-            $teaser_font_css = '';
+            $resolved_font_family = '';
             if ($font_family_setting === 'custom' && !empty($custom_font_url)) {
-                $format = 'woff2';
-                if (preg_match('/\.ttf(\?.*)?$/i', $custom_font_url)) {
-                    $format = 'truetype';
-                } elseif (preg_match('/\.woff(\?.*)?$/i', $custom_font_url)) {
-                    $format = 'woff';
+                $path = wp_parse_url($custom_font_url, PHP_URL_PATH);
+                $ext  = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+                if (in_array($ext, array('woff2', 'woff', 'ttf'), true)) {
+                    $format = ($ext === 'ttf') ? 'truetype' : $ext;
+                    $font_name_escaped = esc_attr($custom_font_name);
+                    $font_url_escaped  = esc_url($custom_font_url);
+                    $css .= "@font-face {\n  font-family: '{$font_name_escaped}';\n  src: url('{$font_url_escaped}') format('{$format}');\n  font-weight: 400 700;\n  font-display: swap;\n}\n";
+                    $resolved_font_family = "'{$font_name_escaped}', sans-serif";
                 }
-                $css .= "@font-face {\n  font-family: '{$custom_font_name}';\n  src: url('{$custom_font_url}') format('{$format}');\n  font-weight: 700 800;\n  font-display: swap;\n}\n";
-                $teaser_font_css .= "font-family: '{$custom_font_name}', sans-serif !important;\n";
-            } elseif (isset($gfont_map[$font_family_setting])) {
-                $google_fonts_needed[$font_family_setting] = $gfont_map[$font_family_setting];
-                $capitalized_font = ucfirst($font_family_setting);
-                $teaser_font_css .= "font-family: '{$capitalized_font}', sans-serif !important;\n";
+            } elseif (in_array($font_family_setting, array('jost', 'montserrat', 'poppins', 'outfit', 'inter', 'questrial'), true)) {
+                $capitalized_font = esc_attr(ucfirst($font_family_setting));
+                $resolved_font_family = "'{$capitalized_font}', sans-serif";
             }
 
+            $teaser_font_rules = '';
+            if (!empty($resolved_font_family)) {
+                $teaser_font_rules .= "font-family: {$resolved_font_family} !important;\n";
+            }
             if ($teaser_font_size > 0) {
-                $teaser_font_css .= "font-size: {$teaser_font_size}px !important;\n";
+                $teaser_font_rules .= "font-size: {$teaser_font_size}px !important;\n";
             }
 
             $css .= "
@@ -529,21 +699,32 @@ class Controller {
                     color: {$text_col} !important;
                     font-size: {$font_size}px !important;
                 }
+                .sneakypeak-teaser-campaign-{$cid} {
+                    font-weight: 400;
+                }
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-label {
+                    font-weight: 600 !important;
+                }
                 .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-price {
                     color: {$bg_end} !important;
-                    {$teaser_font_css}
+                    font-weight: 700 !important;
                 }
             ";
+
+            if (!empty($teaser_font_rules)) {
+                $css .= "
+                .sneakypeak-teaser-campaign-{$cid},
+                .sneakypeak-teaser-campaign-{$cid} *,
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-label,
+                .sneakypeak-teaser-campaign-{$cid} .sneakypeak-teaser-price {
+                    {$teaser_font_rules}
+                }
+                ";
+            }
 
             if (!empty($custom_css)) {
                 $css .= "\n/* Custom CSS for Campaign #{$cid} */\n" . $custom_css . "\n";
             }
-        }
-
-        if (!empty($google_fonts_needed)) {
-            $gfont_query = implode('&family=', array_values($google_fonts_needed));
-            $import_url = 'https://fonts.googleapis.com/css2?family=' . $gfont_query . '&display=swap';
-            $css = "@import url('{$import_url}');\n" . $css;
         }
 
         return $css;

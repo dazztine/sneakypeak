@@ -22,6 +22,7 @@ class Campaign {
     private int $id;
     private string $name;
     private array $meta;
+    private array $raw_meta = array();
 
     public function __construct(int $post_id) {
         $this->id = $post_id;
@@ -40,6 +41,7 @@ class Campaign {
     private function load_meta(): void {
         $defaults = self::get_default_settings();
         $stored = get_post_meta($this->id, '_sneakypeak_settings', true);
+        $this->raw_meta = is_array($stored) ? $stored : array();
         $this->meta = is_array($stored) ? wp_parse_args($stored, $defaults) : $defaults;
     }
 
@@ -59,9 +61,10 @@ class Campaign {
             'exclude_products'       => array(),
             'exclude_categories'     => array(),
             // Badge Settings
+            'badge_anchor'           => 'auto',      // auto (Visual card Auto default), card (Card edge strict), image (Image edge)
             'badge_corner'           => 'top-right', // top-right, top-left, bottom-left, bottom-right
-            'badge_nudge_x'          => 0,           // -100 to 100 px (positive = right, negative = left)
-            'badge_nudge_y'          => 0,           // -100 to 100 px (positive = down, negative = up)
+            'badge_nudge_x'          => 0,           // -200 to 200 px (positive = right, negative = left)
+            'badge_nudge_y'          => 0,           // -200 to 200 px (positive = down, negative = up)
             'badge_top_offset'       => 0,
             'badge_right_offset'     => 0,
             'badge_bottom_offset'    => 0,
@@ -120,16 +123,16 @@ class Campaign {
      * @return array{0: int, 1: int} [x, y]
      */
     public function get_nudge_offsets(): array {
-        $has_nudge_x = isset($this->meta['badge_nudge_x']) && $this->meta['badge_nudge_x'] !== '';
-        $has_nudge_y = isset($this->meta['badge_nudge_y']) && $this->meta['badge_nudge_y'] !== '';
+        $has_nudge_x = array_key_exists('badge_nudge_x', $this->raw_meta);
+        $has_nudge_y = array_key_exists('badge_nudge_y', $this->raw_meta);
 
         if ($has_nudge_x || $has_nudge_y) {
-            $x = max(-100, min(100, (int) ($this->meta['badge_nudge_x'] ?? 0)));
-            $y = max(-100, min(100, (int) ($this->meta['badge_nudge_y'] ?? 0)));
+            $x = max(-200, min(200, (int) ($this->meta['badge_nudge_x'] ?? 0)));
+            $y = max(-200, min(200, (int) ($this->meta['badge_nudge_y'] ?? 0)));
             return array($x, $y);
         }
 
-        // Migration from old corner offsets
+        // Migration from old corner offsets: runs only when neither nudge key exists in stored raw meta
         $corner = (string) ($this->meta['badge_corner'] ?? 'top-right');
         $top    = (int) ($this->meta['badge_top_offset'] ?? 0);
         $right  = (int) ($this->meta['badge_right_offset'] ?? 0);
@@ -153,8 +156,8 @@ class Campaign {
             $y = -$bottom;
         }
 
-        $x = max(-100, min(100, $x));
-        $y = max(-100, min(100, $y));
+        $x = max(-200, min(200, $x));
+        $y = max(-200, min(200, $y));
         return array($x, $y);
     }
 
@@ -164,8 +167,8 @@ class Campaign {
      * @return array{0: int, 1: int} [x, y]
      */
     public function get_single_nudge_offsets(): array {
-        $x = max(-100, min(100, (int) ($this->meta['single_badge_nudge_x'] ?? 0)));
-        $y = max(-100, min(100, (int) ($this->meta['single_badge_nudge_y'] ?? 0)));
+        $x = max(-200, min(200, (int) ($this->meta['single_badge_nudge_x'] ?? 0)));
+        $y = max(-200, min(200, (int) ($this->meta['single_badge_nudge_y'] ?? 0)));
         return array($x, $y);
     }
 

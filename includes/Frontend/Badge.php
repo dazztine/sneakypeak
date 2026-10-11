@@ -63,13 +63,19 @@ class Badge {
             $icon_html = '<span class="sneakypeak-badge-icon sneakypeak-icon-tag" aria-hidden="true">&#127991;</span> ';
         }
 
+        $badge_anchor = (string) $campaign->get_setting('badge_anchor', 'auto');
+        list($nudge_x, $nudge_y) = $is_single ? $campaign->get_single_nudge_offsets() : $campaign->get_nudge_offsets();
+
         return sprintf(
-            '<span class="%1$s" data-campaign-id="%2$d"><span class="%3$s">%4$s%5$s</span></span>',
+            '<span class="%1$s" data-campaign-id="%2$d" data-badge-anchor="%6$s" data-nudge-x="%7$d" data-nudge-y="%8$d"><span class="%3$s">%4$s%5$s</span></span>',
             esc_attr(implode(' ', $wrap_classes)),
             esc_attr($campaign->get_id()),
             esc_attr(implode(' ', $badge_classes)),
             $icon_html,
-            esc_html($badge_text)
+            esc_html($badge_text),
+            esc_attr($badge_anchor),
+            (int) $nudge_x,
+            (int) $nudge_y
         );
     }
 }
