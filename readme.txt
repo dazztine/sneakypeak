@@ -5,7 +5,7 @@ Tags: woocommerce, sneak peek, flash sale, mega sale, 10.10, countdown, badges
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,13 @@ No. In accordance with strict compatibility standards, SneakyPeak attaches badge
 Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
 
 == Changelog ==
+
+= 1.3.3 =
+* Badge Anchor Setting: Added "Badge anchor" setting with options "Card edge (default)" and "Image edge". Card edge mode preserves native corner styling with zero JS repositioning, while Image edge dynamically aligns badges to image bounds on oversized stretched cards.
+* Oversized Threshold Adjustment: Raised oversized card re-anchoring threshold to > 1.75x image width with horizontal centering / left-alignment validation, preventing normal padded grid cards from premature re-anchoring.
+* Position Nudge Protection & Fallback: Added `will-change: transform` and automatic fallback applying nudges via `margin-left`/`margin-top` when themes override CSS transform to `none`.
+* Expanded Nudge Range: Increased position nudge slider/input boundaries from +/-100px to +/-200px for both shop catalog cards and single product views.
+* Cleanup: Removed redundant Google font weight definitions from inline CSS generation.
 
 = 1.3.2 =
 * Card Selector Refinement: Replaced bare `article` in candidate card selectors with scoped `article.product` and `article.type-product`, preventing badges from inadvertently targeting page/search root articles.

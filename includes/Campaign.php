@@ -61,9 +61,10 @@ class Campaign {
             'exclude_products'       => array(),
             'exclude_categories'     => array(),
             // Badge Settings
+            'badge_anchor'           => 'card',      // card (Card edge default), image (Image edge)
             'badge_corner'           => 'top-right', // top-right, top-left, bottom-left, bottom-right
-            'badge_nudge_x'          => 0,           // -100 to 100 px (positive = right, negative = left)
-            'badge_nudge_y'          => 0,           // -100 to 100 px (positive = down, negative = up)
+            'badge_nudge_x'          => 0,           // -200 to 200 px (positive = right, negative = left)
+            'badge_nudge_y'          => 0,           // -200 to 200 px (positive = down, negative = up)
             'badge_top_offset'       => 0,
             'badge_right_offset'     => 0,
             'badge_bottom_offset'    => 0,
@@ -126,8 +127,8 @@ class Campaign {
         $has_nudge_y = array_key_exists('badge_nudge_y', $this->raw_meta);
 
         if ($has_nudge_x || $has_nudge_y) {
-            $x = max(-100, min(100, (int) ($this->meta['badge_nudge_x'] ?? 0)));
-            $y = max(-100, min(100, (int) ($this->meta['badge_nudge_y'] ?? 0)));
+            $x = max(-200, min(200, (int) ($this->meta['badge_nudge_x'] ?? 0)));
+            $y = max(-200, min(200, (int) ($this->meta['badge_nudge_y'] ?? 0)));
             return array($x, $y);
         }
 
@@ -155,8 +156,8 @@ class Campaign {
             $y = -$bottom;
         }
 
-        $x = max(-100, min(100, $x));
-        $y = max(-100, min(100, $y));
+        $x = max(-200, min(200, $x));
+        $y = max(-200, min(200, $y));
         return array($x, $y);
     }
 
@@ -166,8 +167,8 @@ class Campaign {
      * @return array{0: int, 1: int} [x, y]
      */
     public function get_single_nudge_offsets(): array {
-        $x = max(-100, min(100, (int) ($this->meta['single_badge_nudge_x'] ?? 0)));
-        $y = max(-100, min(100, (int) ($this->meta['single_badge_nudge_y'] ?? 0)));
+        $x = max(-200, min(200, (int) ($this->meta['single_badge_nudge_x'] ?? 0)));
+        $y = max(-200, min(200, (int) ($this->meta['single_badge_nudge_y'] ?? 0)));
         return array($x, $y);
     }
 

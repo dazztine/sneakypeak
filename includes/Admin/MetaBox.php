@@ -614,6 +614,18 @@ class MetaBox {
                             </td>
                         </tr>
                         <tr>
+                            <th scope="row"><?php esc_html_e('Badge anchor', 'sneakypeak'); ?></th>
+                            <td>
+                                <select name="sneakypeak[badge_anchor]" id="sneakypeak_badge_anchor">
+                                    <option value="card" <?php selected($settings['badge_anchor'] ?? 'card', 'card'); ?>><?php esc_html_e('Card edge (default)', 'sneakypeak'); ?></option>
+                                    <option value="image" <?php selected($settings['badge_anchor'] ?? 'card', 'image'); ?>><?php esc_html_e('Image edge', 'sneakypeak'); ?></option>
+                                </select>
+                                <p class="description" style="margin-top:6px;">
+                                    <?php esc_html_e('Card edge anchors the badge to the card boundary (no JS re-anchoring). Image edge dynamically re-anchors to the image on single stretched search results.', 'sneakypeak'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th scope="row"><?php esc_html_e('Position Nudge (px)', 'sneakypeak'); ?></th>
                             <td>
                                 <?php
@@ -621,14 +633,14 @@ class MetaBox {
                                 ?>
                                 <label style="margin-right:16px;">
                                     <?php esc_html_e('Horizontal (X):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[badge_nudge_x]" value="<?php echo esc_attr($nudge_x_val); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[badge_nudge_x]" value="<?php echo esc_attr($nudge_x_val); ?>" class="small-text" /> px
                                 </label>
                                 <label>
                                     <?php esc_html_e('Vertical (Y):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[badge_nudge_y]" value="<?php echo esc_attr($nudge_y_val); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[badge_nudge_y]" value="<?php echo esc_attr($nudge_y_val); ?>" class="small-text" /> px
                                 </label>
                                 <p class="description" style="margin-top:6px;">
-                                    <?php esc_html_e('Move the badge by pixels from its corner. Right/down are positive, left/up are negative.', 'sneakypeak'); ?>
+                                    <?php esc_html_e('Move the badge by pixels from its corner (-200 to +200). Right/down are positive, left/up are negative.', 'sneakypeak'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -730,14 +742,14 @@ class MetaBox {
                                 <?php list($single_nudge_x, $single_nudge_y) = $campaign->get_single_nudge_offsets(); ?>
                                 <label style="margin-right:16px;">
                                     <?php esc_html_e('Horizontal (X):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_x]" value="<?php echo esc_attr($single_nudge_x); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[single_badge_nudge_x]" value="<?php echo esc_attr($single_nudge_x); ?>" class="small-text" /> px
                                 </label>
                                 <label>
                                     <?php esc_html_e('Vertical (Y):', 'sneakypeak'); ?>
-                                    <input type="number" min="-100" max="100" step="1" name="sneakypeak[single_badge_nudge_y]" value="<?php echo esc_attr($single_nudge_y); ?>" class="small-text" /> px
+                                    <input type="number" min="-200" max="200" step="1" name="sneakypeak[single_badge_nudge_y]" value="<?php echo esc_attr($single_nudge_y); ?>" class="small-text" /> px
                                 </label>
                                 <p class="description" style="margin-top:6px;">
-                                    <?php esc_html_e('Independent fine-tuning nudge for single product view.', 'sneakypeak'); ?>
+                                    <?php esc_html_e('Independent fine-tuning nudge (-200 to +200 px) for single product view.', 'sneakypeak'); ?>
                                 </p>
                             </td>
                         </tr>
@@ -1081,9 +1093,13 @@ class MetaBox {
             ? $input['badge_icon']
             : 'star';
 
+        $clean['badge_anchor'] = in_array($input['badge_anchor'] ?? '', array('card', 'image'), true)
+            ? $input['badge_anchor']
+            : 'card';
+
         $clean['badge_font_size'] = min(24, max(9, absint($input['badge_font_size'] ?? 12)));
-        $clean['badge_nudge_x']   = max(-100, min(100, (int) ($input['badge_nudge_x'] ?? 0)));
-        $clean['badge_nudge_y']   = max(-100, min(100, (int) ($input['badge_nudge_y'] ?? 0)));
+        $clean['badge_nudge_x']   = max(-200, min(200, (int) ($input['badge_nudge_x'] ?? 0)));
+        $clean['badge_nudge_y']   = max(-200, min(200, (int) ($input['badge_nudge_y'] ?? 0)));
 
         $clean['badge_text_teaser'] = sanitize_text_field($input['badge_text_teaser'] ?? 'SNEAK PEEK');
         $clean['badge_text_live']   = sanitize_text_field($input['badge_text_live'] ?? 'SALE NOW');
@@ -1112,8 +1128,8 @@ class MetaBox {
         $clean['single_badge_corner'] = in_array($input['single_badge_corner'] ?? '', array('top-right', 'top-left', 'bottom-left', 'bottom-right'), true)
             ? $input['single_badge_corner']
             : 'top-right';
-        $clean['single_badge_nudge_x'] = max(-100, min(100, (int) ($input['single_badge_nudge_x'] ?? 0)));
-        $clean['single_badge_nudge_y'] = max(-100, min(100, (int) ($input['single_badge_nudge_y'] ?? 0)));
+        $clean['single_badge_nudge_x'] = max(-200, min(200, (int) ($input['single_badge_nudge_x'] ?? 0)));
+        $clean['single_badge_nudge_y'] = max(-200, min(200, (int) ($input['single_badge_nudge_y'] ?? 0)));
 
         // Teaser settings
         $clean['mask_rule'] = in_array($input['mask_rule'] ?? '', array('keep_first', 'mask_last_3'), true) ? $input['mask_rule'] : 'keep_first';

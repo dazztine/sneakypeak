@@ -129,6 +129,7 @@ class Controller {
         $campaigns_payload = array();
         foreach ($active_campaigns as $camp) {
             $phase = $camp->get_phase();
+            list($nudge_x, $nudge_y) = $camp->get_nudge_offsets();
             $campaigns_payload[$camp->get_id()] = array(
                 'id'                   => $camp->get_id(),
                 'phase'                => $phase,
@@ -137,6 +138,9 @@ class Controller {
                 'singleBadgeHtml'      => Badge::render($camp, $phase, true),
                 'singlePosition'       => (string) $camp->get_setting('single_badge_position', 'gallery'),
                 'singleCustomSelector' => (string) $camp->get_setting('single_badge_custom_selector', ''),
+                'badgeAnchor'          => (string) $camp->get_setting('badge_anchor', 'card'),
+                'nudgeX'               => (int) $nudge_x,
+                'nudgeY'               => (int) $nudge_y,
             );
         }
 
@@ -613,16 +617,6 @@ class Controller {
      */
     public static function get_inline_custom_css(array $active_campaigns): string {
         $css = '';
-        $google_fonts_needed = array();
-
-        $gfont_map = array(
-            'jost'       => 'Jost:wght@700;800',
-            'montserrat' => 'Montserrat:wght@700;800',
-            'poppins'    => 'Poppins:wght@700;800',
-            'outfit'     => 'Outfit:wght@700;800',
-            'inter'      => 'Inter:wght@700;800',
-            'questrial'  => 'Questrial',
-        );
 
         foreach ($active_campaigns as $camp) {
             $cid = $camp->get_id();
@@ -678,7 +672,7 @@ class Controller {
                     $css .= "@font-face {\n  font-family: '{$font_name_escaped}';\n  src: url('{$font_url_escaped}') format('{$format}');\n  font-weight: 400 700;\n  font-display: swap;\n}\n";
                     $resolved_font_family = "'{$font_name_escaped}', sans-serif";
                 }
-            } elseif (isset($gfont_map[$font_family_setting])) {
+            } elseif (in_array($font_family_setting, array('jost', 'montserrat', 'poppins', 'outfit', 'inter', 'questrial'), true)) {
                 $capitalized_font = esc_attr(ucfirst($font_family_setting));
                 $resolved_font_family = "'{$capitalized_font}', sans-serif";
             }

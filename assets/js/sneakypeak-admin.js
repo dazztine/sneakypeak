@@ -116,6 +116,8 @@
                (className.match(/(^|\s)sneakypeak-badge-size-\S+/g) || []).join(' ');
       }).addClass('sneakypeak-badge-shape-' + shape + ' sneakypeak-badge-size-' + size);
 
+      var badgeAnchor = $('select[name="sneakypeak[badge_anchor]"]').val() || 'card';
+
       var shopWrapCss = {
         top: 'auto',
         right: 'auto',
@@ -132,6 +134,24 @@
       } else if (corner === 'bottom-right') {
         shopWrapCss.bottom = '0px'; shopWrapCss.right = '0px';
       }
+
+      if (badgeAnchor === 'image') {
+        var $imageBox = $('.sneakypeak-mock-image-box');
+        if ($imageBox.length) {
+          var cardWidth = $('#sneakypeak-mock-card').innerWidth() || 280;
+          var imgBoxPos = $imageBox.position() || { left: 0 };
+          var imgBoxWidth = $imageBox.outerWidth() || 240;
+          if (corner === 'top-right' || corner === 'bottom-right') {
+            var rightOffset = Math.max(0, Math.round(cardWidth - (imgBoxPos.left + imgBoxWidth)));
+            shopWrapCss.right = rightOffset + 'px';
+            shopWrapCss.left = 'auto';
+          } else if (corner === 'top-left' || corner === 'bottom-left') {
+            shopWrapCss.left = Math.max(0, Math.round(imgBoxPos.left)) + 'px';
+            shopWrapCss.right = 'auto';
+          }
+        }
+      }
+
       $mockBadgeWrap.css(shopWrapCss);
 
       var badgeStyle = {

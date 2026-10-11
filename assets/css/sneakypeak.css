@@ -31,6 +31,7 @@ ul.products li.product,
     pointer-events: none !important;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
     line-height: 1 !important;
+    will-change: transform;
 }
 
 /* Corner Positions (defaults if offsets are 0) */
