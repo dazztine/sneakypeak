@@ -64,7 +64,7 @@ class Resolver {
 
     /**
      * Resolve the winning active campaign and phase for a product (Teaser and Live phases).
-     * Used for front-end badge display and teaser price rendering.
+     * Used for primary pricing and single-campaign backwards compatibility.
      *
      * Returns array with:
      * - 'campaign': Campaign|null
@@ -75,17 +75,34 @@ class Resolver {
      * @return array
      */
     public static function resolve($product, ?int $now = null): array {
+        $all = self::resolve_all($product, $now);
+        return !empty($all) ? $all[0] : array('campaign' => null, 'phase' => Campaign::PHASE_DRAFT);
+    }
+
+    /**
+     * Resolve all active campaigns and phases matching a product (Teaser and Live phases).
+     * Used for simultaneous badge display across multiple campaigns.
+     *
+     * Returns array of arrays, each with:
+     * - 'campaign': Campaign
+     * - 'phase': string (draft|scheduled|teaser|live|ended)
+     *
+     * @param WC_Product|int $product
+     * @param int|null $now
+     * @return array
+     */
+    public static function resolve_all($product, ?int $now = null): array {
         if (is_numeric($product)) {
             $product = wc_get_product($product);
         }
 
         if (!$product || !is_a($product, 'WC_Product')) {
-            return array('campaign' => null, 'phase' => Campaign::PHASE_DRAFT);
+            return array();
         }
 
         $product_id = $product->get_id();
         $cache_ctx = ($now !== null) ? (string) $now : self::get_preview_cache_context();
-        $cache_key = $product_id . '_' . $cache_ctx;
+        $cache_key = 'all_' . $product_id . '_' . $cache_ctx;
 
         if (isset(self::$resolved_cache[$cache_key])) {
             return self::$resolved_cache[$cache_key];
@@ -93,28 +110,25 @@ class Resolver {
 
         $active_campaigns = self::get_active_campaigns($now);
         if (empty($active_campaigns)) {
-            $result = array('campaign' => null, 'phase' => Campaign::PHASE_DRAFT);
-            self::$resolved_cache[$cache_key] = $result;
-            return $result;
+            self::$resolved_cache[$cache_key] = array();
+            return array();
         }
 
+        $matches = array();
         foreach ($active_campaigns as $campaign) {
             if (self::is_product_in_campaign($product, $campaign)) {
                 // Must have a campaign price or custom teaser (Rule 4: No fake or estimated prices)
                 if (self::get_price_source()->has_campaign_price_or_teaser($product, $campaign)) {
-                    $result = array(
+                    $matches[] = array(
                         'campaign' => $campaign,
                         'phase'    => $campaign->get_phase($now),
                     );
-                    self::$resolved_cache[$cache_key] = $result;
-                    return $result;
                 }
             }
         }
 
-        $result = array('campaign' => null, 'phase' => Campaign::PHASE_DRAFT);
-        self::$resolved_cache[$cache_key] = $result;
-        return $result;
+        self::$resolved_cache[$cache_key] = $matches;
+        return $matches;
     }
 
     /**

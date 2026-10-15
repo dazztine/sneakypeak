@@ -158,11 +158,13 @@ class Controller {
         if ($pid > 0 && get_post_type($pid) === 'product') {
             $product = wc_get_product($pid);
             if ($product) {
-                $res = Resolver::resolve($product);
-                if ($res['campaign'] !== null) {
+                $all = Resolver::resolve_all($product);
+                if (!empty($all)) {
                     $classes[] = 'sneakypeak-promo';
-                    $classes[] = 'sneakypeak-campaign-' . $res['campaign']->get_id();
-                    $classes[] = 'sneakypeak-phase-' . $res['phase'];
+                    foreach ($all as $match) {
+                        $classes[] = 'sneakypeak-campaign-' . $match['campaign']->get_id();
+                        $classes[] = 'sneakypeak-phase-' . $match['phase'];
+                    }
                 }
             }
         }
@@ -177,11 +179,13 @@ class Controller {
             $product = $pid ? wc_get_product($pid) : null;
         }
         if ($product && is_a($product, 'WC_Product')) {
-            $res = Resolver::resolve($product);
-            if ($res['campaign'] !== null) {
+            $all = Resolver::resolve_all($product);
+            if (!empty($all)) {
                 $classes[] = 'sneakypeak-promo';
-                $classes[] = 'sneakypeak-campaign-' . $res['campaign']->get_id();
-                $classes[] = 'sneakypeak-phase-' . $res['phase'];
+                foreach ($all as $match) {
+                    $classes[] = 'sneakypeak-campaign-' . $match['campaign']->get_id();
+                    $classes[] = 'sneakypeak-phase-' . $match['phase'];
+                }
             }
         }
         return $classes;
@@ -192,11 +196,13 @@ class Controller {
             global $product;
             $prod = is_a($product, 'WC_Product') ? $product : wc_get_product(get_the_ID());
             if ($prod && is_a($prod, 'WC_Product')) {
-                $res = Resolver::resolve($prod);
-                if ($res['campaign'] !== null) {
+                $all = Resolver::resolve_all($prod);
+                if (!empty($all)) {
                     $classes[] = 'sneakypeak-promo-single';
-                    $classes[] = 'sneakypeak-campaign-' . $res['campaign']->get_id();
-                    $classes[] = 'sneakypeak-phase-' . $res['phase'];
+                    foreach ($all as $match) {
+                        $classes[] = 'sneakypeak-campaign-' . $match['campaign']->get_id();
+                        $classes[] = 'sneakypeak-phase-' . $match['phase'];
+                    }
                 }
             }
         }
@@ -217,14 +223,8 @@ class Controller {
             return $html;
         }
 
-        $res = Resolver::resolve($prod);
-        if ($res['campaign'] === null || self::$single_badge_rendered || strpos($html, 'sneakypeak-badge') !== false) {
-            return $html;
-        }
-
-        // Only attach if single product placement is set to 'gallery'
-        $position = (string) $res['campaign']->get_setting('single_badge_position', 'gallery');
-        if ($position !== 'gallery') {
+        $all = Resolver::resolve_all($prod);
+        if (empty($all) || self::$single_badge_rendered || strpos($html, 'sneakypeak-badge') !== false) {
             return $html;
         }
 
@@ -233,13 +233,23 @@ class Controller {
             return $html;
         }
 
-        $badge_html = Badge::render($res['campaign'], $res['phase'], true);
+        $badges_html = '';
+        foreach ($all as $match) {
+            $position = (string) $match['campaign']->get_setting('single_badge_position', 'gallery');
+            if ($position === 'gallery') {
+                $badges_html .= Badge::render($match['campaign'], $match['phase'], true);
+            }
+        }
+
+        if (empty($badges_html)) {
+            return $html;
+        }
 
         // Safely inject right after opening <div ...> tag of .woocommerce-product-gallery__image
         $first_gt = strpos($html, '>');
         if ($first_gt !== false && stripos(substr($html, 0, $first_gt), '<div') !== false) {
             self::$single_badge_rendered = true;
-            return substr($html, 0, $first_gt + 1) . $badge_html . substr($html, $first_gt + 1);
+            return substr($html, 0, $first_gt + 1) . $badges_html . substr($html, $first_gt + 1);
         }
 
         return $html;
@@ -258,18 +268,23 @@ class Controller {
             return;
         }
 
-        $res = Resolver::resolve($prod);
-        if ($res['campaign'] === null) {
+        $all = Resolver::resolve_all($prod);
+        if (empty($all)) {
             return;
         }
 
-        $position = (string) $res['campaign']->get_setting('single_badge_position', 'gallery');
-        if ($position !== 'gallery') {
-            return;
+        $badges_html = '';
+        foreach ($all as $match) {
+            $position = (string) $match['campaign']->get_setting('single_badge_position', 'gallery');
+            if ($position === 'gallery') {
+                $badges_html .= Badge::render($match['campaign'], $match['phase'], true);
+            }
         }
 
-        self::$single_badge_rendered = true;
-        echo '<div class="sneakypeak-single-fallback-wrap" style="position:relative; clear:both;">' . Badge::render($res['campaign'], $res['phase'], true) . '</div>';
+        if (!empty($badges_html)) {
+            self::$single_badge_rendered = true;
+            echo '<div class="sneakypeak-single-fallback-wrap" style="position:relative; clear:both;">' . $badges_html . '</div>';
+        }
     }
 
     /**
@@ -285,18 +300,23 @@ class Controller {
             return;
         }
 
-        $res = Resolver::resolve($prod);
-        if ($res['campaign'] === null) {
+        $all = Resolver::resolve_all($prod);
+        if (empty($all)) {
             return;
         }
 
-        $position = (string) $res['campaign']->get_setting('single_badge_position', 'gallery');
-        if ($position !== 'summary') {
-            return;
+        $badges_html = '';
+        foreach ($all as $match) {
+            $position = (string) $match['campaign']->get_setting('single_badge_position', 'gallery');
+            if ($position === 'summary') {
+                $badges_html .= Badge::render($match['campaign'], $match['phase'], true);
+            }
         }
 
-        self::$single_badge_rendered = true;
-        echo '<div class="sneakypeak-single-summary-wrap" style="position:relative; margin-bottom:12px; display:inline-block; clear:both;">' . Badge::render($res['campaign'], $res['phase'], true) . '</div>';
+        if (!empty($badges_html)) {
+            self::$single_badge_rendered = true;
+            echo '<div class="sneakypeak-single-summary-wrap" style="position:relative; margin-bottom:12px; display:inline-block; clear:both;">' . $badges_html . '</div>';
+        }
     }
 
     /**
@@ -312,18 +332,24 @@ class Controller {
             return $price_html;
         }
 
-        $res = Resolver::resolve($product);
-        if ($res['campaign'] === null) {
+        $all = Resolver::resolve_all($product);
+        if (empty($all)) {
             return $price_html;
         }
 
-        // In Live phase, append hidden card marker for rock-solid JS card targeting across block themes
-        if ($res['phase'] === Campaign::PHASE_LIVE) {
-            $marker = sprintf(
-                '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
-                esc_attr($res['campaign']->get_id())
-            );
+        $res = $all[0];
 
+        // Markers for all matching campaigns to enable rock-solid JS card targeting across block themes
+        $markers = '';
+        foreach ($all as $match) {
+            $markers .= sprintf(
+                '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
+                esc_attr($match['campaign']->get_id())
+            );
+        }
+
+        // In Live phase, append markers for all matching campaigns
+        if ($res['phase'] === Campaign::PHASE_LIVE) {
             // Variable products: format "From [sale price]" with struck-through regular price
             if ($product->is_type('variable')) {
                 $children = $product->get_children();
@@ -357,22 +383,22 @@ class Controller {
                         $display_sale = wc_get_price_to_display($product, array('price' => $min_sale));
                         $formatted_price = wc_price($display_sale) . $product->get_price_suffix();
                     }
-                    return $prefix_html . $formatted_price . $marker;
+                    return $prefix_html . $formatted_price . $markers;
                 }
             }
 
-            return $price_html . $marker;
+            return $price_html . $markers;
         }
 
-        // If campaign is in any phase other than Teaser (e.g. Scheduled or Ended), let standard pricing render
+        // If primary campaign is in any phase other than Teaser (e.g. Scheduled or Ended), let standard pricing render + markers
         if ($res['phase'] !== Campaign::PHASE_TEASER) {
-            return $price_html;
+            return $price_html . $markers;
         }
 
         $price_source = Resolver::get_price_source();
         $teaser_price = $price_source->get_teaser_price_string($product, $res['campaign']);
         if (empty($teaser_price)) {
-            return $price_html;
+            return $price_html . $markers;
         }
 
         $campaign = $res['campaign'];
@@ -388,7 +414,18 @@ class Controller {
             esc_html($teaser_price)
         );
 
-        return $price_html . $teaser_block;
+        // Append other campaigns' markers if any
+        $other_markers = '';
+        foreach ($all as $match) {
+            if ($match['campaign']->get_id() !== $campaign->get_id()) {
+                $other_markers .= sprintf(
+                    '<span class="sneakypeak-card-marker sneakypeak-campaign-%1$d" data-campaign-id="%1$d" style="display:none;"></span>',
+                    esc_attr($match['campaign']->get_id())
+                );
+            }
+        }
+
+        return $price_html . $teaser_block . $other_markers;
     }
 
     /**

@@ -39,7 +39,7 @@ Each campaign operates through distinct phases:
 No. In accordance with strict compatibility standards, SneakyPeak attaches badges only to the outer card element. Your theme's image containers and hover overlays remain completely unmodified.
 
 = What happens if a product is in multiple active campaigns? =
-Each campaign features a configurable **Priority** setting. The campaign with the lower priority number takes precedence.
+All qualifying campaigns display their badges simultaneously on the product card and single product gallery! You can adjust the vertical or horizontal position nudges on each campaign to arrange or stack badges neatly without collision. The campaign with the lower priority number takes precedence for price calculations (teaser price / live sale price enforcement).
 
 == Changelog ==
 

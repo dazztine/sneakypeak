@@ -49,8 +49,10 @@ Most flash sale plugins suffer from two major flaws:
      - REST API (`/wc/store/`)
 4. **Independent Dynamic Phase Resolution**:
    - Campaign phases evaluate dynamically at request time using the store's configured timezone (`wp_timezone()`), eliminating reliance on WP-Cron timing.
-5. **Multi-Campaign Priority Engine**:
-   - When multiple campaigns target the same product, conflict resolution is handled cleanly via a configurable priority score (lower number wins).
+5. **Multi-Campaign Simultaneous Badges & Priority Engine**:
+   - Products matching multiple active campaigns display badges for all qualifying campaigns simultaneously on catalog cards and single product galleries.
+   - Independent corner and X/Y nudge offsets allow store owners to stack badges neatly along the vertical axis without overlap.
+   - When campaigns have competing sale prices or teasers, pricing logic is deterministically governed by the primary campaign with the lowest priority score.
 6. **Isolated Admin Footprint**:
    - SneakyPeak runs strictly on its own Custom Post Type (`sneakypeak_campaign`) and never modifies native product edit screens.
 

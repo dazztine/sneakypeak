@@ -243,15 +243,12 @@
       }
 
       // Size and content sanity check before attaching a badge to a candidate card.
-      // Reject and keep climbing no further if the candidate contains more than one SneakyPeak anchor
-      // or more than one li.product, .type-product, .wc-block-product-template__item.
+      // Reject and keep climbing no further if candidate contains more than one product card element.
       if (candidate) {
-        var anchorsInCandidate = candidate.querySelectorAll('.sneakypeak-promo, .sneakypeak-teaser-wrap, .sneakypeak-card-marker');
-        var productsInCandidate = candidate.querySelectorAll('li.product, .type-product, .wc-block-product-template__item');
-        if (anchorsInCandidate.length <= 1 && productsInCandidate.length <= 1) {
+        var productsInCandidate = candidate.querySelectorAll('li.product, .type-product, .wc-block-product-template__item, article.product, article.type-product, .product-card');
+        if (productsInCandidate.length <= 1) {
           card = candidate;
         }
-        // If rejected, card remains null ("Reject and keep climbing no further")
       }
 
       // If no valid card is found, use the closest ancestor of the anchor that contains exactly one product image.
@@ -288,61 +285,83 @@
         }
       }
 
-      // Deduplicate: only one SneakyPeak badge per card
-      if (card.querySelector('.sneakypeak-badge-wrap')) {
-        return;
-      }
+      // Extract all campaign IDs that apply to this card
+      var campaignIds = [];
 
-      // Extract campaign ID from class list (e.g. sneakypeak-campaign-123) or data-campaign-id
-      var campaignId = 0;
-      var teaser = card.querySelector('.sneakypeak-teaser-wrap, .sneakypeak-card-marker');
-      if (teaser && teaser.getAttribute('data-campaign-id')) {
-        campaignId = parseInt(teaser.getAttribute('data-campaign-id'), 10);
-      } else {
-        var match = card.className.match(/sneakypeak-campaign-(\d+)/);
-        if (match && match[1]) {
-          campaignId = parseInt(match[1], 10);
+      // 1. From markers and teasers inside the card
+      var cardMarkers = card.querySelectorAll('.sneakypeak-teaser-wrap[data-campaign-id], .sneakypeak-card-marker[data-campaign-id]');
+      cardMarkers.forEach(function (marker) {
+        var cid = parseInt(marker.getAttribute('data-campaign-id'), 10);
+        if (cid && config.campaigns[cid] && campaignIds.indexOf(cid) === -1) {
+          campaignIds.push(cid);
+        }
+      });
+
+      // 2. From the anchor element itself if it has data-campaign-id
+      if (el.getAttribute && el.getAttribute('data-campaign-id')) {
+        var elCid = parseInt(el.getAttribute('data-campaign-id'), 10);
+        if (elCid && config.campaigns[elCid] && campaignIds.indexOf(elCid) === -1) {
+          campaignIds.push(elCid);
         }
       }
 
-      // Fallback: pick the first active campaign in config if ID not in class
-      if (!campaignId || !config.campaigns[campaignId]) {
+      // 3. From card CSS classes (e.g. sneakypeak-campaign-123)
+      var classRegex = /sneakypeak-campaign-(\d+)/g;
+      var classMatch;
+      while ((classMatch = classRegex.exec(card.className)) !== null) {
+        var cIdFromClass = parseInt(classMatch[1], 10);
+        if (cIdFromClass && config.campaigns[cIdFromClass] && campaignIds.indexOf(cIdFromClass) === -1) {
+          campaignIds.push(cIdFromClass);
+        }
+      }
+
+      // 4. Fallback: pick the first active campaign in config if no ID found
+      if (campaignIds.length === 0) {
         var keys = Object.keys(config.campaigns);
         if (keys.length > 0) {
-          campaignId = parseInt(keys[0], 10);
-        } else {
-          return;
+          var firstCid = parseInt(keys[0], 10);
+          if (firstCid && campaignIds.indexOf(firstCid) === -1) {
+            campaignIds.push(firstCid);
+          }
         }
       }
 
-      var badgeEl = createBadgeElement(campaignId, false);
-      if (!badgeEl) {
-        return;
-      }
+      // Render and position a badge for each matching campaign on this card
+      campaignIds.forEach(function (campaignId) {
+        // Deduplicate per campaign: only one badge per campaign on this card
+        if (card.querySelector('.sneakypeak-badge-wrap[data-campaign-id="' + campaignId + '"]')) {
+          return;
+        }
 
-      // Ensure card container has relative positioning if static, without touching images or links
-      var cardComputed = window.getComputedStyle(card);
-      if (cardComputed.position === 'static') {
-        card.style.position = 'relative';
-      }
+        var badgeEl = createBadgeElement(campaignId, false);
+        if (!badgeEl) {
+          return;
+        }
 
-      if (isDebug && typeof console !== 'undefined' && console.log) {
-        console.log('[SneakyPeak Debug] Attached badge for campaign #' + campaignId + ' to card: <' + card.tagName.toLowerCase() + '> ' + (card.className || ''));
-      }
+        // Ensure card container has relative positioning if static, without touching images or links
+        var cardComputed = window.getComputedStyle(card);
+        if (cardComputed.position === 'static') {
+          card.style.position = 'relative';
+        }
 
-      // Append directly to the card
-      card.appendChild(badgeEl);
+        if (isDebug && typeof console !== 'undefined' && console.log) {
+          console.log('[SneakyPeak Debug] Attached badge for campaign #' + campaignId + ' to card: <' + card.tagName.toLowerCase() + '> ' + (card.className || ''));
+        }
 
-      // Handle card wider than its content (e.g. single-result case)
-      adjustCardBadgePosition(card, badgeEl);
+        // Append directly to the card
+        card.appendChild(badgeEl);
 
-      // Re-run after card image finishes loading if not already complete
-      var cardImg = card.querySelector('img');
-      if (cardImg && !cardImg.complete) {
-        cardImg.addEventListener('load', function () {
-          adjustCardBadgePosition(card, badgeEl);
-        }, { once: true });
-      }
+        // Handle card wider than its content (e.g. single-result case)
+        adjustCardBadgePosition(card, badgeEl);
+
+        // Re-run after card image finishes loading if not already complete
+        var cardImg = card.querySelector('img');
+        if (cardImg && !cardImg.complete) {
+          cardImg.addEventListener('load', function () {
+            adjustCardBadgePosition(card, badgeEl);
+          }, { once: true });
+        }
+      });
     });
 
     // 2. Single product page badge handling (gallery, summary, or custom CSS selector)
@@ -353,81 +372,102 @@
     )) || !!document.querySelector('.woocommerce-product-gallery, .summary.entry-summary, .wp-block-woocommerce-product-gallery, .wp-block-woocommerce-product-summary');
 
     if (isSingleProduct) {
-      var singleCid = 0;
-      if (document.body) {
-        var singleMatch = document.body.className.match(/sneakypeak-campaign-(\d+)/);
-        if (singleMatch && singleMatch[1]) {
-          singleCid = parseInt(singleMatch[1], 10);
+      var singleCids = [];
+      var singleClassSources = [document.body, document.querySelector('.sneakypeak-promo-single')];
+      singleClassSources.forEach(function (src) {
+        if (!src) {
+          return;
         }
-      }
-      if (!singleCid) {
-        var marker = document.querySelector('.sneakypeak-card-marker[data-campaign-id], .sneakypeak-teaser-wrap[data-campaign-id]');
-        if (marker && marker.getAttribute('data-campaign-id')) {
-          singleCid = parseInt(marker.getAttribute('data-campaign-id'), 10);
+        var singleMatchRegex = /sneakypeak-campaign-(\d+)/g;
+        var sm;
+        while ((sm = singleMatchRegex.exec(src.className || '')) !== null) {
+          var scid = parseInt(sm[1], 10);
+          if (scid && config.campaigns[scid] && singleCids.indexOf(scid) === -1) {
+            singleCids.push(scid);
+          }
         }
-      }
-      if (!singleCid) {
+      });
+      var singleMarkers = document.querySelectorAll('.sneakypeak-card-marker[data-campaign-id], .sneakypeak-teaser-wrap[data-campaign-id]');
+      singleMarkers.forEach(function (marker) {
+        var scid = parseInt(marker.getAttribute('data-campaign-id'), 10);
+        if (scid && config.campaigns[scid] && singleCids.indexOf(scid) === -1) {
+          singleCids.push(scid);
+        }
+      });
+      if (singleCids.length === 0) {
         var firstKey = Object.keys(config.campaigns)[0];
-        singleCid = firstKey ? parseInt(firstKey, 10) : 0;
+        if (firstKey) {
+          singleCids.push(parseInt(firstKey, 10));
+        }
       }
 
-      if (singleCid && config.campaigns[singleCid]) {
+      singleCids.forEach(function (singleCid) {
         var camp = config.campaigns[singleCid];
+        if (!camp) {
+          return;
+        }
         var pos = camp.singlePosition || 'gallery';
 
-        // Check if single badge is already rendered
-        var existingSingleBadge = document.querySelector('.sneakypeak-badge-single-wrap, .sneakypeak-single-summary-wrap .sneakypeak-badge-wrap, .sneakypeak-single-fallback-wrap .sneakypeak-badge-wrap');
+        // Check if single badge for this campaign is already rendered
+        var existingBadge = document.querySelector('.sneakypeak-badge-wrap[data-campaign-id="' + singleCid + '"]');
+        if (existingBadge) {
+          return;
+        }
 
-        if (!existingSingleBadge) {
-          if (pos === 'custom' && camp.singleCustomSelector) {
-            var customTarget = null;
-            try {
-              customTarget = document.querySelector(camp.singleCustomSelector);
-            } catch (e) {
-              customTarget = null;
-            }
-            if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap')) {
-              var customBadge = createBadgeElement(singleCid, true);
-              if (customBadge) {
-                var ctComputed = window.getComputedStyle(customTarget);
-                if (ctComputed.position === 'static') {
-                  customTarget.style.position = 'relative';
-                }
-                customTarget.appendChild(customBadge);
+        if (pos === 'custom' && camp.singleCustomSelector) {
+          var customTarget = null;
+          try {
+            customTarget = document.querySelector(camp.singleCustomSelector);
+          } catch (e) {
+            customTarget = null;
+          }
+          if (customTarget && !customTarget.querySelector('.sneakypeak-badge-wrap[data-campaign-id="' + singleCid + '"]')) {
+            var customBadge = createBadgeElement(singleCid, true);
+            if (customBadge) {
+              var ctComputed = window.getComputedStyle(customTarget);
+              if (ctComputed.position === 'static') {
+                customTarget.style.position = 'relative';
               }
-            } else if (!customTarget) {
-              // Custom target not found; fall back to gallery
-              pos = 'gallery';
+              customTarget.appendChild(customBadge);
+              return;
+            }
+          } else if (!customTarget) {
+            // Custom target not found; fall back to gallery
+            pos = 'gallery';
+          }
+        }
+
+        if (pos === 'summary') {
+          var summaryTarget = document.querySelector('.sneakypeak-single-summary-wrap, .summary.entry-summary, .wp-block-woocommerce-product-summary, .product-summary');
+          if (summaryTarget && !summaryTarget.querySelector('.sneakypeak-badge-wrap[data-campaign-id="' + singleCid + '"]')) {
+            var summaryBadge = createBadgeElement(singleCid, true);
+            if (summaryBadge) {
+              var sumWrap = summaryTarget.closest('.sneakypeak-single-summary-wrap') || summaryTarget.querySelector('.sneakypeak-single-summary-wrap');
+              if (sumWrap) {
+                sumWrap.appendChild(summaryBadge);
+              } else {
+                var newSumWrap = document.createElement('div');
+                newSumWrap.className = 'sneakypeak-single-summary-wrap';
+                newSumWrap.style.cssText = 'position:relative; margin-bottom:12px; display:inline-block; clear:both;';
+                newSumWrap.appendChild(summaryBadge);
+                summaryTarget.insertBefore(newSumWrap, summaryTarget.firstChild);
+              }
             }
           }
-
-          if (pos === 'summary') {
-            var summaryTarget = document.querySelector('.sneakypeak-single-summary-wrap, .summary.entry-summary, .wp-block-woocommerce-product-summary, .product-summary');
-            if (summaryTarget && !summaryTarget.querySelector('.sneakypeak-badge-wrap')) {
-              var summaryBadge = createBadgeElement(singleCid, true);
-              if (summaryBadge) {
-                var sumWrap = document.createElement('div');
-                sumWrap.className = 'sneakypeak-single-summary-wrap';
-                sumWrap.style.cssText = 'position:relative; margin-bottom:12px; display:inline-block; clear:both;';
-                sumWrap.appendChild(summaryBadge);
-                summaryTarget.insertBefore(sumWrap, summaryTarget.firstChild);
+        } else if (pos === 'gallery') {
+          var galleryImage = document.querySelector('.woocommerce-product-gallery__image') || document.querySelector('.woocommerce-product-gallery, .wp-block-woocommerce-product-gallery');
+          if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap[data-campaign-id="' + singleCid + '"]')) {
+            var singleBadge = createBadgeElement(singleCid, true);
+            if (singleBadge) {
+              var galComputed = window.getComputedStyle(galleryImage);
+              if (galComputed.position === 'static') {
+                galleryImage.style.position = 'relative';
               }
-            }
-          } else if (pos === 'gallery') {
-            var galleryImage = document.querySelector('.woocommerce-product-gallery__image, .woocommerce-product-gallery, .wp-block-woocommerce-product-gallery');
-            if (galleryImage && !galleryImage.querySelector('.sneakypeak-badge-wrap')) {
-              var singleBadge = createBadgeElement(singleCid, true);
-              if (singleBadge) {
-                var galComputed = window.getComputedStyle(galleryImage);
-                if (galComputed.position === 'static') {
-                  galleryImage.style.position = 'relative';
-                }
-                galleryImage.appendChild(singleBadge);
-              }
+              galleryImage.appendChild(singleBadge);
             }
           }
         }
-      }
+      });
     }
   }
 
